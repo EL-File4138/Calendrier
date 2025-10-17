@@ -1,0 +1,73 @@
+.course-block {
+  height: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  transition: opacity 0.2s, transform 0.1s;
+  color: #000;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.course-block:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.course-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-time {
+  font-weight: 600;
+  margin-bottom: 3px;
+  font-size: 11px;
+}
+
+.course-session-type {
+  font-style: italic;
+  font-size: 10px;
+  margin-bottom: 2px;
+  opacity: 0.9;
+}
+
+.course-location {
+  font-size: 10px;
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+
+.course-instructor {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+/* Dark mode - keep text dark on colored backgrounds for readability */
+html.dark-mode .course-block {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+@media print {
+  .course-block {
+    box-shadow: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .course-block:hover {
+    transform: none;
+    opacity: 1;
+  }
+}

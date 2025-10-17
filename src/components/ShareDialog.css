@@ -1,0 +1,133 @@
+.share-dialog {
+  max-width: 550px;
+}
+
+.share-body {
+  padding: 24px;
+}
+
+.share-description {
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+  color: #555;
+  font-size: 14px;
+}
+
+.generate-button {
+  width: 100%;
+  padding: 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+
+.generate-button:hover {
+  background: #218838;
+}
+
+.share-result {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+
+.share-result label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.share-url-container {
+  display: flex;
+  gap: 8px;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  background: #f8f9fa;
+  font-family: monospace;
+}
+
+.copy-button {
+  padding: 10px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.copy-button:hover {
+  background: #0056b3;
+}
+
+.share-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+}
+
+/* Dark mode styles */
+html.dark-mode .modal-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+html.dark-mode .modal-content {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+html.dark-mode .modal-header {
+  border-bottom-color: #444;
+}
+
+html.dark-mode .modal-header h2 {
+  color: #e0e0e0;
+}
+
+html.dark-mode .close-button {
+  color: #999;
+}
+
+html.dark-mode .close-button:hover {
+  color: #e0e0e0;
+}
+
+html.dark-mode .share-description {
+  color: #ccc;
+}
+
+html.dark-mode .share-result {
+  border-top-color: #444;
+}
+
+html.dark-mode .share-result label {
+  color: #e0e0e0;
+}
+
+html.dark-mode .share-url-input {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+html.dark-mode .share-footer {
+  border-top-color: #444;
+}

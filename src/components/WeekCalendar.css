@@ -1,0 +1,271 @@
+.week-calendar {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: white;
+  user-select: none;
+}
+
+.calendar-title {
+  display: none;
+  text-align: center;
+  margin: 20px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Dark mode */
+html.dark-mode .calendar-title {
+  color: #e0e0e0;
+}
+
+.print-only {
+  display: none;
+}
+
+.calendar-grid {
+  min-width: 900px;
+  position: relative;
+}
+
+/* Dark mode styles */
+html.dark-mode .week-calendar {
+  background: #121212;
+}
+
+html.dark-mode .calendar-header {
+  background: #1e1e1e;
+  border-bottom-color: #444;
+}
+
+html.dark-mode .day-header {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-right-color: #444;
+}
+
+html.dark-mode .time-label-header {
+  border-right-color: #444;
+}
+
+html.dark-mode .time-labels {
+  border-right-color: #444;
+}
+
+html.dark-mode .time-label {
+  color: #999;
+  border-bottom-color: #333;
+}
+
+html.dark-mode .day-column {
+  border-right-color: #444;
+}
+
+html.dark-mode .time-slot {
+  border-bottom-color: #333;
+}
+
+html.dark-mode .context-menu {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+html.dark-mode .context-menu button {
+  color: #e0e0e0;
+}
+
+html.dark-mode .context-menu button:hover {
+  background: #333;
+}
+
+@media print {
+  .week-calendar {
+    overflow: visible;
+    page-break-inside: avoid;
+  }
+
+  .calendar-title.print-only {
+    display: block !important;
+    color: #000 !important;
+  }
+
+  .calendar-grid {
+    transform: scale(0.95);
+    transform-origin: top left;
+  }
+
+  .calendar-header {
+    position: static;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .day-header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+    background: #f8f9fa !important;
+    color: #000 !important;
+  }
+
+  .time-label {
+    color: #666 !important;
+  }
+
+  .day-column {
+    cursor: default;
+  }
+
+  .context-menu {
+    display: none;
+  }
+
+  .drag-preview {
+    display: none;
+  }
+
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+}
+.calendar-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  border-bottom: 2px solid #333;
+}
+
+.time-label-header {
+  width: 80px;
+  flex-shrink: 0;
+  border-right: 1px solid #ddd;
+}
+
+.day-header {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  border-right: 1px solid #ddd;
+  background: #f8f9fa;
+}
+
+.day-header:last-child {
+  border-right: none;
+}
+
+.calendar-body {
+  display: flex;
+  position: relative;
+}
+
+.time-labels {
+  width: 80px;
+  flex-shrink: 0;
+  border-right: 1px solid #ddd;
+  position: relative;
+}
+
+.time-label {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: right;
+  color: #666;
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
+}
+
+.days-grid {
+  display: flex;
+  flex: 1;
+  position: relative;
+}
+
+.day-column {
+  flex: 1;
+  position: relative;
+  border-right: 1px solid #ddd;
+  cursor: crosshair;
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+.time-slot {
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
+}
+
+.course-block-wrapper {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 5;
+}
+
+.drag-preview {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  background: rgba(66, 133, 244, 0.3);
+  border: 2px dashed #4285f4;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  padding: 4px 0;
+  min-width: 120px;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.context-menu button:hover {
+  background: #f0f0f0;
+}
+
+@media print {
+  .week-calendar {
+    overflow: visible;
+  }
+
+  .calendar-header {
+    position: static;
+  }
+
+  .day-column {
+    cursor: default;
+  }
+
+  .context-menu {
+    display: none;
+  }
+
+  .drag-preview {
+    display: none;
+  }
+}
