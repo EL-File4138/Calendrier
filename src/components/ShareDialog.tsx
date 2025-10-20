@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './ShareDialog.css';
 
 interface ShareDialogProps {
@@ -6,13 +7,14 @@ interface ShareDialogProps {
 }
 
 const ShareDialog = ({ onClose }: ShareDialogProps) => {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = () => {
     if (!url.trim()) {
-      alert('Please enter a URL');
+      alert(t('share.enterUrl'));
       return;
     }
 
@@ -20,7 +22,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       // Validate URL
       const testUrl = new URL(url.trim());
       if (!['http:', 'https:'].includes(testUrl.protocol)) {
-        alert('Invalid URL protocol. Only HTTP and HTTPS are allowed.');
+        alert(t('share.invalidProtocol'));
         return;
       }
 
@@ -37,7 +39,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       setShareUrl(generatedUrl);
       setCopied(false);
     } catch (error) {
-      alert('Invalid URL format');
+      alert(t('share.invalidFormat'));
     }
   };
 
@@ -54,7 +56,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content share-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Share Calendar</h2>
+          <h2>{t('share.title')}</h2>
           <button className="close-button" onClick={onClose}>
             &times;
           </button>
@@ -62,17 +64,17 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
 
         <div className="share-body">
           <p className="share-description">
-            Enter the URL of your calendar JSON file to generate a shareable link.
+            {t('share.description')}
           </p>
 
           <div className="form-group">
             <label htmlFor="calendar-url">
-              Calendar JSON URL <span className="required">*</span>
+              {t('share.calendarUrl')} <span className="required">*</span>
             </label>
             <input
               id="calendar-url"
               type="text"
-              placeholder="https://example.com/calendar.json"
+              placeholder={t('share.urlPlaceholder')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => {
@@ -84,12 +86,12 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
           </div>
 
           <button className="generate-button" onClick={handleGenerate}>
-            Generate Share Link
+            {t('share.generate')}
           </button>
 
           {shareUrl && (
             <div className="share-result">
-              <label>Share Link:</label>
+              <label>{t('share.shareLink')}</label>
               <div className="share-url-container">
                 <input
                   type="text"
@@ -98,7 +100,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
                   className="share-url-input"
                 />
                 <button className="copy-button" onClick={handleCopy}>
-                  {copied ? '✓ Copied' : '📋 Copy'}
+                  {copied ? `✓ ${t('share.copied')}` : `📋 ${t('share.copy')}`}
                 </button>
               </div>
             </div>
@@ -107,7 +109,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
 
         <div className="share-footer">
           <button className="cancel-button" onClick={onClose}>
-            Close
+            {t('share.close')}
           </button>
         </div>
       </div>

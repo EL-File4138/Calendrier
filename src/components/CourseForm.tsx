@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Session, Weekday } from '../types/Course';
 import { WEEKDAYS } from '../utils/timeUtils';
 import { getNextColor } from '../utils/colors';
@@ -16,6 +17,7 @@ interface CourseFormProps {
 }
 
 const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
+  const { t } = useTranslation();
   const { courses, addCourse, updateCourse, deleteCourse } = useCalendar();
 
   const existingCourse = courseId ? courses.find(c => c.id === courseId) : null;
@@ -66,7 +68,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert('Course title is required');
+      alert(t('courseForm.titleRequired'));
       return;
     }
 
@@ -85,7 +87,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
   };
 
   const handleDelete = () => {
-    if (courseId && window.confirm('Are you sure you want to delete this course?')) {
+    if (courseId && window.confirm(t('courseForm.deleteConfirm'))) {
       deleteCourse(courseId);
       onClose();
     }
@@ -95,26 +97,26 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{courseId ? 'Edit Course' : 'Add Course'}</h2>
+          <h2>{courseId ? t('courseForm.titleEdit') : t('courseForm.titleAdd')}</h2>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>
-              Course Title <span className="required">*</span>
+              {t('courseForm.courseTitle')} <span className="required">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Introduction to Computer Science"
+              placeholder={t('courseForm.courseTitlePlaceholder')}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Color</label>
+            <label>{t('courseForm.color')}</label>
             <input
               type="color"
               value={color}
@@ -123,18 +125,18 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
           </div>
 
           <div className="sessions-section">
-            <h3>Sessions</h3>
+            <h3>{t('courseForm.sessions')}</h3>
             {sessions.map((session, index) => (
               <div key={index} className="session-group">
                 <div className="session-header">
-                  <h4>Session {index + 1}</h4>
+                  <h4>{t('courseForm.sessionNumber', { number: index + 1 })}</h4>
                   {sessions.length > 1 && (
                     <button
                       type="button"
                       className="remove-session-button"
                       onClick={() => handleRemoveSession(index)}
                     >
-                      Remove
+                      {t('courseForm.removeSession')}
                     </button>
                   )}
                 </div>
@@ -142,7 +144,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
                 <div className="form-row">
                   <div className="form-group">
                     <label>
-                      Day <span className="required">*</span>
+                      {t('courseForm.day')} <span className="required">*</span>
                     </label>
                     <select
                       value={session.meetDay}
@@ -153,7 +155,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
                     >
                       {WEEKDAYS.map(day => (
                         <option key={day} value={day}>
-                          {day}
+                          {t(`weekdays.${day.toLowerCase()}`)}
                         </option>
                       ))}
                     </select>
@@ -161,7 +163,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
 
                   <div className="form-group">
                     <label>
-                      Start Time <span className="required">*</span>
+                      {t('courseForm.startTime')} <span className="required">*</span>
                     </label>
                     <input
                       type="time"
@@ -175,7 +177,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
 
                   <div className="form-group">
                     <label>
-                      End Time <span className="required">*</span>
+                      {t('courseForm.endTime')} <span className="required">*</span>
                     </label>
                     <input
                       type="time"
@@ -190,46 +192,46 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Session Type</label>
+                    <label>{t('courseForm.sessionType')}</label>
                     <input
                       type="text"
                       value={session.sessionType || ''}
                       onChange={(e) =>
                         handleSessionChange(index, 'sessionType', e.target.value)
                       }
-                      placeholder="e.g., Lecture, Lab, Tutorial"
+                      placeholder={t('courseForm.sessionTypePlaceholder')}
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>Location</label>
+                    <label>{t('courseForm.location')}</label>
                     <input
                       type="text"
                       value={session.location || ''}
                       onChange={(e) =>
                         handleSessionChange(index, 'location', e.target.value)
                       }
-                      placeholder="e.g., Room 101"
+                      placeholder={t('courseForm.locationPlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label>Instructor</label>
+                  <label>{t('courseForm.instructor')}</label>
                   <input
                     type="text"
                     value={session.instructor || ''}
                     onChange={(e) =>
                       handleSessionChange(index, 'instructor', e.target.value)
                     }
-                    placeholder="e.g., Dr. Smith"
+                    placeholder={t('courseForm.instructorPlaceholder')}
                   />
                 </div>
               </div>
             ))}
 
             <button type="button" className="add-session-button" onClick={handleAddSession}>
-              + Add Session
+              {t('courseForm.addSession')}
             </button>
           </div>
 
@@ -237,16 +239,16 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
             <div>
               {courseId && (
                 <button type="button" className="delete-button" onClick={handleDelete}>
-                  Delete Course
+                  {t('courseForm.deleteCourse')}
                 </button>
               )}
             </div>
             <div>
               <button type="button" className="cancel-button" onClick={onClose}>
-                Cancel
+                {t('courseForm.cancel')}
               </button>
               <button type="submit" className="submit-button">
-                {courseId ? 'Update' : 'Add'} Course
+                {courseId ? t('courseForm.update') : t('courseForm.add')} {t('courseForm.course')}
               </button>
             </div>
           </div>

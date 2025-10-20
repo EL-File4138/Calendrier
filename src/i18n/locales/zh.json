@@ -1,0 +1,128 @@
+{
+  "toolbar": {
+    "addCourse": "添加",
+    "addCourseTitle": "添加课程",
+    "exportTitle": "导出 JSON",
+    "importTitle": "导入 JSON",
+    "shareTitle": "分享日历",
+    "saveAsImageTitle": "保存为图片",
+    "printTitle": "打印",
+    "newCalendarTitle": "新建日历",
+    "settingsTitle": "设置",
+    "darkModeTitle": "切换深色模式",
+    "editTitlePlaceholder": "点击编辑标题"
+  },
+  "courseForm": {
+    "titleEdit": "编辑课程",
+    "titleAdd": "添加课程",
+    "courseTitle": "课程名称",
+    "courseTitlePlaceholder": "例如：计算机科学导论",
+    "color": "颜色",
+    "sessions": "课时",
+    "sessionNumber": "课时 {{number}}",
+    "removeSession": "删除",
+    "day": "星期",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "sessionType": "课程类型",
+    "sessionTypePlaceholder": "例如：讲座、实验、辅导",
+    "location": "地点",
+    "locationPlaceholder": "例如：101 教室",
+    "instructor": "教师",
+    "instructorPlaceholder": "例如：张教授",
+    "addSession": "+ 添加课时",
+    "deleteCourse": "删除课程",
+    "cancel": "取消",
+    "update": "更新",
+    "add": "添加",
+    "course": "课程",
+    "required": "*",
+    "titleRequired": "课程名称为必填项",
+    "deleteConfirm": "确定要删除此课程吗？"
+  },
+  "settings": {
+    "title": "设置",
+    "timeFormat": "时间格式",
+    "timeFormat24h": "24 小时制 (13:00)",
+    "timeFormat12h": "12 小时制 (下午 1:00)",
+    "weekStartsOn": "一周开始于",
+    "monday": "星期一",
+    "sunday": "星期日",
+    "language": "语言",
+    "cancel": "取消",
+    "save": "保存设置"
+  },
+  "confirmDialog": {
+    "ok": "确定",
+    "cancel": "取消"
+  },
+  "dialogs": {
+    "newCalendar": {
+      "title": "创建新日历",
+      "message": "确定要创建新日历吗？当前所有数据将被清除。",
+      "confirm": "清除并创建",
+      "cancel": "取消",
+      "saveAndCreate": "保存并创建"
+    },
+    "import": {
+      "title": "导入日历",
+      "message": "导入将替换当前所有日历数据。是否继续？",
+      "confirm": "导入",
+      "cancel": "取消"
+    },
+    "importFromUrl": {
+      "title": "从 URL 导入日历",
+      "message": "通过 URL 提供的日历文件。导入将替换当前所有日历数据。是否继续？",
+      "confirm": "导入",
+      "cancel": "取消"
+    }
+  },
+  "share": {
+    "title": "分享日历",
+    "description": "输入您的日历 JSON 文件 URL 以生成可分享的链接。",
+    "calendarUrl": "日历 JSON URL",
+    "urlPlaceholder": "https://example.com/calendar.json",
+    "generate": "生成分享链接",
+    "shareLink": "分享链接：",
+    "copy": "复制",
+    "copied": "已复制",
+    "close": "关闭",
+    "enterUrl": "请输入 URL",
+    "invalidProtocol": "无效的 URL 协议。仅允许 HTTP 和 HTTPS。",
+    "invalidFormat": "无效的 URL 格式"
+  },
+  "sessionDetail": {
+    "day": "星期：",
+    "time": "时间：",
+    "sessionType": "课程类型：",
+    "location": "地点：",
+    "instructor": "教师：",
+    "color": "颜色：",
+    "close": "关闭",
+    "editCourse": "编辑课程"
+  },
+  "contextMenu": {
+    "duplicate": "复制",
+    "edit": "编辑",
+    "delete": "删除"
+  },
+  "weekdays": {
+    "monday": "周一",
+    "tuesday": "周二",
+    "wednesday": "周三",
+    "thursday": "周四",
+    "friday": "周五",
+    "saturday": "周六",
+    "sunday": "周日"
+  },
+  "time": {
+    "am": "上午",
+    "pm": "下午"
+  },
+  "errors": {
+    "calendarNotFound": "未找到日历",
+    "failedToFetchCalendar": "获取日历数据失败",
+    "invalidCalendarFormat": "无效的日历数据格式",
+    "failedToSaveImage": "保存图片失败"
+  }
+}

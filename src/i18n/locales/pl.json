@@ -1,0 +1,128 @@
+{
+  "toolbar": {
+    "addCourse": "Dodaj",
+    "addCourseTitle": "Dodaj kurs",
+    "exportTitle": "Eksportuj JSON",
+    "importTitle": "Importuj JSON",
+    "shareTitle": "Udostępnij kalendarz",
+    "saveAsImageTitle": "Zapisz jako obraz",
+    "printTitle": "Drukuj",
+    "newCalendarTitle": "Nowy kalendarz",
+    "settingsTitle": "Ustawienia",
+    "darkModeTitle": "Przełącz tryb ciemny",
+    "editTitlePlaceholder": "Kliknij, aby edytować tytuł"
+  },
+  "courseForm": {
+    "titleEdit": "Edytuj kurs",
+    "titleAdd": "Dodaj kurs",
+    "courseTitle": "Nazwa kursu",
+    "courseTitlePlaceholder": "np. Wprowadzenie do informatyki",
+    "color": "Kolor",
+    "sessions": "Zajęcia",
+    "sessionNumber": "Zajęcia {{number}}",
+    "removeSession": "Usuń",
+    "day": "Dzień",
+    "startTime": "Godzina rozpoczęcia",
+    "endTime": "Godzina zakończenia",
+    "sessionType": "Typ zajęć",
+    "sessionTypePlaceholder": "np. Wykład, Laboratorium, Ćwiczenia",
+    "location": "Lokalizacja",
+    "locationPlaceholder": "np. Sala 101",
+    "instructor": "Wykładowca",
+    "instructorPlaceholder": "np. Dr. Kowalski",
+    "addSession": "+ Dodaj zajęcia",
+    "deleteCourse": "Usuń kurs",
+    "cancel": "Anuluj",
+    "update": "Zaktualizuj",
+    "add": "Dodaj",
+    "course": "Kurs",
+    "required": "*",
+    "titleRequired": "Nazwa kursu jest wymagana",
+    "deleteConfirm": "Czy na pewno chcesz usunąć ten kurs?"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "timeFormat": "Format czasu",
+    "timeFormat24h": "24-godzinny (13:00)",
+    "timeFormat12h": "12-godzinny (1:00 PM)",
+    "weekStartsOn": "Tydzień zaczyna się w",
+    "monday": "Poniedziałek",
+    "sunday": "Niedziela",
+    "language": "Język",
+    "cancel": "Anuluj",
+    "save": "Zapisz ustawienia"
+  },
+  "confirmDialog": {
+    "ok": "OK",
+    "cancel": "Anuluj"
+  },
+  "dialogs": {
+    "newCalendar": {
+      "title": "Utwórz nowy kalendarz",
+      "message": "Czy na pewno chcesz utworzyć nowy kalendarz? Wszystkie bieżące dane zostaną usunięte.",
+      "confirm": "Wyczyść i utwórz nowy",
+      "cancel": "Anuluj",
+      "saveAndCreate": "Zapisz i utwórz nowy"
+    },
+    "import": {
+      "title": "Importuj kalendarz",
+      "message": "Import zastąpi wszystkie bieżące dane kalendarza. Czy chcesz kontynuować?",
+      "confirm": "Importuj",
+      "cancel": "Anuluj"
+    },
+    "importFromUrl": {
+      "title": "Importuj kalendarz z URL",
+      "message": "Plik kalendarza został dostarczony za pomocą adresu URL. Import zastąpi wszystkie bieżące dane kalendarza. Czy chcesz kontynuować?",
+      "confirm": "Importuj",
+      "cancel": "Anuluj"
+    }
+  },
+  "share": {
+    "title": "Udostępnij kalendarz",
+    "description": "Wprowadź adres URL pliku JSON kalendarza, aby wygenerować link do udostępnienia.",
+    "calendarUrl": "URL JSON kalendarza",
+    "urlPlaceholder": "https://example.com/calendar.json",
+    "generate": "Wygeneruj link do udostępnienia",
+    "shareLink": "Link do udostępnienia:",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "close": "Zamknij",
+    "enterUrl": "Wprowadź adres URL",
+    "invalidProtocol": "Nieprawidłowy protokół URL. Dozwolone są tylko HTTP i HTTPS.",
+    "invalidFormat": "Nieprawidłowy format URL"
+  },
+  "sessionDetail": {
+    "day": "Dzień:",
+    "time": "Czas:",
+    "sessionType": "Typ zajęć:",
+    "location": "Lokalizacja:",
+    "instructor": "Wykładowca:",
+    "color": "Kolor:",
+    "close": "Zamknij",
+    "editCourse": "Edytuj kurs"
+  },
+  "contextMenu": {
+    "duplicate": "Duplikuj",
+    "edit": "Edytuj",
+    "delete": "Usuń"
+  },
+  "weekdays": {
+    "monday": "Poniedziałek",
+    "tuesday": "Wtorek",
+    "wednesday": "Środa",
+    "thursday": "Czwartek",
+    "friday": "Piątek",
+    "saturday": "Sobota",
+    "sunday": "Niedziela"
+  },
+  "time": {
+    "am": "AM",
+    "pm": "PM"
+  },
+  "errors": {
+    "calendarNotFound": "Nie znaleziono kalendarza",
+    "failedToFetchCalendar": "Nie udało się pobrać danych kalendarza",
+    "invalidCalendarFormat": "Nieprawidłowy format danych kalendarza",
+    "failedToSaveImage": "Nie udało się zapisać obrazu"
+  }
+}

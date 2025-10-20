@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCalendar } from '../context/CalendarContext';
 import { getOrderedWeekdays, timeToMinutes, minutesToTime, calculateTimeRange, formatTime } from '../utils/timeUtils';
 import type { Weekday, Course, Session } from '../types/Course';
@@ -25,6 +26,7 @@ interface SessionDetailState {
 }
 
 const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
+  const { t } = useTranslation();
   const { courses, settings, duplicateCourse, deleteCourse, title } = useCalendar();
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
@@ -211,7 +213,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
           <div className="time-label-header"></div>
           {visibleWeekdays.map(day => (
             <div key={day} className="day-header">
-              {day}
+              {t(`weekdays.${day.toLowerCase()}`)}
             </div>
           ))}
         </div>
@@ -280,12 +282,12 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button onClick={handleDuplicate}>Duplicate</button>
+          <button onClick={handleDuplicate}>{t('contextMenu.duplicate')}</button>
           <button onClick={() => {
             if (contextMenu.courseId) onEditCourse(contextMenu.courseId);
             setContextMenu({ visible: false, x: 0, y: 0, courseId: null });
-          }}>Edit</button>
-          <button onClick={handleDelete}>Delete</button>
+          }}>{t('contextMenu.edit')}</button>
+          <button onClick={handleDelete}>{t('contextMenu.delete')}</button>
         </div>
       )}
 

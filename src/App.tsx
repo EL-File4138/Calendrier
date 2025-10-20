@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CalendarProvider, useCalendar } from './context/CalendarContext';
 import WeekCalendar from './components/WeekCalendar';
 import CourseForm from './components/CourseForm';
@@ -9,6 +10,7 @@ import type { Weekday } from './types/Course';
 import './App.css';
 
 function AppContent() {
+  const { t } = useTranslation();
   const { importData } = useCalendar();
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -65,12 +67,12 @@ function AppContent() {
               setShowImportDialog(true);
             } catch (e) {
               console.error('Invalid JSON format:', e);
-              alert('Invalid calendar data format');
+              alert(t('errors.invalidCalendarFormat'));
             }
           })
           .catch(error => {
             console.error('Failed to fetch calendar data:', error);
-            alert('Failed to fetch calendar data: ' + error.message);
+            alert(t('errors.failedToFetchCalendar') + ': ' + error.message);
           });
 
         // Clean up URL by removing the query parameter
@@ -137,10 +139,10 @@ function AppContent() {
       )}
       {showImportDialog && (
         <ConfirmDialog
-          title="Import Calendar from URL"
-          message="A calendar file was provided via URL. Importing will replace all current calendar data. Do you want to continue?"
-          confirmText="Import"
-          cancelText="Cancel"
+          title={t('dialogs.importFromUrl.title')}
+          message={t('dialogs.importFromUrl.message')}
+          confirmText={t('dialogs.importFromUrl.confirm')}
+          cancelText={t('dialogs.importFromUrl.cancel')}
           onConfirm={handleConfirmImport}
           onCancel={() => {
             pendingImportRef.current = null;

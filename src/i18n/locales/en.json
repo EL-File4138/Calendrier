@@ -1,0 +1,128 @@
+{
+  "toolbar": {
+    "addCourse": "Add",
+    "addCourseTitle": "Add Course",
+    "exportTitle": "Export JSON",
+    "importTitle": "Import JSON",
+    "shareTitle": "Share Calendar",
+    "saveAsImageTitle": "Save as Image",
+    "printTitle": "Print",
+    "newCalendarTitle": "New Calendar",
+    "settingsTitle": "Settings",
+    "darkModeTitle": "Toggle dark mode",
+    "editTitlePlaceholder": "Click to edit title"
+  },
+  "courseForm": {
+    "titleEdit": "Edit Course",
+    "titleAdd": "Add Course",
+    "courseTitle": "Course Title",
+    "courseTitlePlaceholder": "e.g., Introduction to Computer Science",
+    "color": "Color",
+    "sessions": "Sessions",
+    "sessionNumber": "Session {{number}}",
+    "removeSession": "Remove",
+    "day": "Day",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "sessionType": "Session Type",
+    "sessionTypePlaceholder": "e.g., Lecture, Lab, Tutorial",
+    "location": "Location",
+    "locationPlaceholder": "e.g., Room 101",
+    "instructor": "Instructor",
+    "instructorPlaceholder": "e.g., Dr. Smith",
+    "addSession": "+ Add Session",
+    "deleteCourse": "Delete Course",
+    "cancel": "Cancel",
+    "update": "Update",
+    "add": "Add",
+    "course": "Course",
+    "required": "*",
+    "titleRequired": "Course title is required",
+    "deleteConfirm": "Are you sure you want to delete this course?"
+  },
+  "settings": {
+    "title": "Settings",
+    "timeFormat": "Time Format",
+    "timeFormat24h": "24-hour (13:00)",
+    "timeFormat12h": "12-hour (1:00 PM)",
+    "weekStartsOn": "Week Starts On",
+    "monday": "Monday",
+    "sunday": "Sunday",
+    "language": "Language",
+    "cancel": "Cancel",
+    "save": "Save Settings"
+  },
+  "confirmDialog": {
+    "ok": "OK",
+    "cancel": "Cancel"
+  },
+  "dialogs": {
+    "newCalendar": {
+      "title": "Create New Calendar",
+      "message": "Are you sure you want to create a new calendar? All current data will be cleared.",
+      "confirm": "Clear & Create New",
+      "cancel": "Cancel",
+      "saveAndCreate": "Save & Create New"
+    },
+    "import": {
+      "title": "Import Calendar",
+      "message": "Importing will replace all current calendar data. Do you want to continue?",
+      "confirm": "Import",
+      "cancel": "Cancel"
+    },
+    "importFromUrl": {
+      "title": "Import Calendar from URL",
+      "message": "A calendar file was provided via URL. Importing will replace all current calendar data. Do you want to continue?",
+      "confirm": "Import",
+      "cancel": "Cancel"
+    }
+  },
+  "share": {
+    "title": "Share Calendar",
+    "description": "Enter the URL of your calendar JSON file to generate a shareable link.",
+    "calendarUrl": "Calendar JSON URL",
+    "urlPlaceholder": "https://example.com/calendar.json",
+    "generate": "Generate Share Link",
+    "shareLink": "Share Link:",
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "enterUrl": "Please enter a URL",
+    "invalidProtocol": "Invalid URL protocol. Only HTTP and HTTPS are allowed.",
+    "invalidFormat": "Invalid URL format"
+  },
+  "sessionDetail": {
+    "day": "Day:",
+    "time": "Time:",
+    "sessionType": "Session Type:",
+    "location": "Location:",
+    "instructor": "Instructor:",
+    "color": "Color:",
+    "close": "Close",
+    "editCourse": "Edit Course"
+  },
+  "contextMenu": {
+    "duplicate": "Duplicate",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "weekdays": {
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday"
+  },
+  "time": {
+    "am": "AM",
+    "pm": "PM"
+  },
+  "errors": {
+    "calendarNotFound": "Calendar not found",
+    "failedToFetchCalendar": "Failed to fetch calendar data",
+    "invalidCalendarFormat": "Invalid calendar data format",
+    "failedToSaveImage": "Failed to save image"
+  }
+}

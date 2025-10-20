@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Course, Session, TimeFormat } from '../types/Course';
 import { formatTime } from '../utils/timeUtils';
 import './SessionDetailDialog.css';
@@ -17,6 +18,8 @@ const SessionDetailDialog = ({
   onClose,
   onEdit,
 }: SessionDetailDialogProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content session-detail-dialog" onClick={(e) => e.stopPropagation()}>
@@ -29,12 +32,12 @@ const SessionDetailDialog = ({
 
         <div className="session-detail-body">
           <div className="detail-row">
-            <div className="detail-label">Day:</div>
-            <div className="detail-value">{session.meetDay}</div>
+            <div className="detail-label">{t('sessionDetail.day')}</div>
+            <div className="detail-value">{t(`weekdays.${session.meetDay.toLowerCase()}`)}</div>
           </div>
 
           <div className="detail-row">
-            <div className="detail-label">Time:</div>
+            <div className="detail-label">{t('sessionDetail.time')}</div>
             <div className="detail-value">
               {formatTime(session.startTime, timeFormat)} - {formatTime(session.endTime, timeFormat)}
             </div>
@@ -42,27 +45,27 @@ const SessionDetailDialog = ({
 
           {session.sessionType && (
             <div className="detail-row">
-              <div className="detail-label">Session Type:</div>
+              <div className="detail-label">{t('sessionDetail.sessionType')}</div>
               <div className="detail-value">{session.sessionType}</div>
             </div>
           )}
 
           {session.location && (
             <div className="detail-row">
-              <div className="detail-label">Location:</div>
+              <div className="detail-label">{t('sessionDetail.location')}</div>
               <div className="detail-value">{session.location}</div>
             </div>
           )}
 
           {session.instructor && (
             <div className="detail-row">
-              <div className="detail-label">Instructor:</div>
+              <div className="detail-label">{t('sessionDetail.instructor')}</div>
               <div className="detail-value">{session.instructor}</div>
             </div>
           )}
 
           <div className="detail-row">
-            <div className="detail-label">Color:</div>
+            <div className="detail-label">{t('sessionDetail.color')}</div>
             <div className="detail-value">
               <div
                 className="color-preview"
@@ -74,10 +77,10 @@ const SessionDetailDialog = ({
 
         <div className="session-detail-footer">
           <button className="cancel-button" onClick={onClose}>
-            Close
+            {t('sessionDetail.close')}
           </button>
           <button className="submit-button" onClick={onEdit}>
-            Edit Course
+            {t('sessionDetail.editCourse')}
           </button>
         </div>
       </div>

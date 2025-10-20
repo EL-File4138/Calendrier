@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toPng } from 'html-to-image';
 import { useCalendar } from '../context/CalendarContext';
 import ConfirmDialog from './ConfirmDialog';
@@ -13,6 +14,7 @@ interface ToolbarProps {
 type DialogType = 'new-calendar' | 'import-warning' | 'share' | null;
 
 const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
+  const { t } = useTranslation();
   const { title, exportData, importData, newCalendar, updateTitle, darkMode, toggleDarkMode } = useCalendar();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImportRef = useRef<string | null>(null);
@@ -83,7 +85,7 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     const toolbarElement = document.querySelector('.toolbar') as HTMLElement;
 
     if (!calendarElement) {
-      alert('Calendar not found');
+      alert(t('errors.calendarNotFound'));
       return;
     }
 
@@ -125,7 +127,7 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
       link.click();
     } catch (error) {
       console.error('Failed to save image:', error);
-      alert('Failed to save image');
+      alert(t('errors.failedToSaveImage'));
 
       // Restore on error
       if (toolbarElement) {
@@ -178,38 +180,38 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
               autoFocus
             />
           ) : (
-            <h1 className="app-title" onClick={handleTitleClick} title="Click to edit title">
+            <h1 className="app-title" onClick={handleTitleClick} title={t('toolbar.editTitlePlaceholder')}>
               {title}
             </h1>
           )}
         </div>
 
         <div className="toolbar-section toolbar-actions">
-          <button className="toolbar-button primary" onClick={onAddCourse} title="Add Course">
-            ➕ Add
+          <button className="toolbar-button primary" onClick={onAddCourse} title={t('toolbar.addCourseTitle')}>
+            ➕ {t('toolbar.addCourse')}
           </button>
-          <button className="toolbar-button btn-export" onClick={handleExport} title="Export JSON">
+          <button className="toolbar-button btn-export" onClick={handleExport} title={t('toolbar.exportTitle')}>
             💾
           </button>
-          <button className="toolbar-button btn-import" onClick={handleImport} title="Import JSON">
+          <button className="toolbar-button btn-import" onClick={handleImport} title={t('toolbar.importTitle')}>
             📥
           </button>
-          <button className="toolbar-button btn-share" onClick={() => setDialog('share')} title="Share Calendar">
+          <button className="toolbar-button btn-share" onClick={() => setDialog('share')} title={t('toolbar.shareTitle')}>
             <span role="img" aria-label="Share">🔗</span>
           </button>
-          <button className="toolbar-button btn-image" onClick={handleSaveAsImage} title="Save as Image">
+          <button className="toolbar-button btn-image" onClick={handleSaveAsImage} title={t('toolbar.saveAsImageTitle')}>
             🖼️
           </button>
-          <button className="toolbar-button btn-print" onClick={handlePrint} title="Print">
+          <button className="toolbar-button btn-print" onClick={handlePrint} title={t('toolbar.printTitle')}>
             🖨️
           </button>
-          <button className="toolbar-button btn-new" onClick={handleNewCalendar} title="New Calendar">
+          <button className="toolbar-button btn-new" onClick={handleNewCalendar} title={t('toolbar.newCalendarTitle')}>
             📄
           </button>
-          <button className="toolbar-button btn-settings" onClick={onOpenSettings} title="Settings">
+          <button className="toolbar-button btn-settings" onClick={onOpenSettings} title={t('toolbar.settingsTitle')}>
             ⚙️
           </button>
-          <button className="toolbar-button btn-darkmode" onClick={toggleDarkMode} title="Toggle dark mode">
+          <button className="toolbar-button btn-darkmode" onClick={toggleDarkMode} title={t('toolbar.darkModeTitle')}>
             {darkMode ? '☀️' : '🌙'}
           </button>
         </div>
@@ -225,12 +227,12 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
       {dialog === 'new-calendar' && (
         <ConfirmDialog
-          title="Create New Calendar"
-          message="Are you sure you want to create a new calendar? All current data will be cleared."
-          confirmText="Clear & Create New"
-          cancelText="Cancel"
+          title={t('dialogs.newCalendar.title')}
+          message={t('dialogs.newCalendar.message')}
+          confirmText={t('dialogs.newCalendar.confirm')}
+          cancelText={t('dialogs.newCalendar.cancel')}
           showSecondaryAction
-          secondaryActionText="Save & Create New"
+          secondaryActionText={t('dialogs.newCalendar.saveAndCreate')}
           onConfirm={handleConfirmNewCalendar}
           onSecondaryAction={handleSaveBeforeNew}
           onCancel={() => setDialog(null)}
@@ -239,10 +241,10 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
       {dialog === 'import-warning' && (
         <ConfirmDialog
-          title="Import Calendar"
-          message="Importing will replace all current calendar data. Do you want to continue?"
-          confirmText="Import"
-          cancelText="Cancel"
+          title={t('dialogs.import.title')}
+          message={t('dialogs.import.message')}
+          confirmText={t('dialogs.import.confirm')}
+          cancelText={t('dialogs.import.cancel')}
           onConfirm={handleConfirmImport}
           onCancel={() => {
             pendingImportRef.current = null;

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCalendar } from '../context/CalendarContext';
 import type { TimeFormat, WeekStart } from '../types/Course';
+import { AVAILABLE_LANGUAGES } from '../i18n/config';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -8,12 +10,15 @@ interface SettingsModalProps {
 }
 
 const SettingsModal = ({ onClose }: SettingsModalProps) => {
+  const { t, i18n } = useTranslation();
   const { settings, updateSettings } = useCalendar();
   const [timeFormat, setTimeFormat] = useState<TimeFormat>(settings.timeFormat);
   const [weekStart, setWeekStart] = useState<WeekStart>(settings.weekStart);
+  const [language, setLanguage] = useState(i18n.language);
 
   const handleSave = () => {
     updateSettings({ timeFormat, weekStart });
+    i18n.changeLanguage(language);
     onClose();
   };
 
@@ -21,13 +26,13 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Settings</h2>
+          <h2>{t('settings.title')}</h2>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
 
         <div className="settings-body">
           <div className="setting-group">
-            <label className="setting-label">Time Format</label>
+            <label className="setting-label">{t('settings.timeFormat')}</label>
             <div className="setting-options">
               <label className="radio-option">
                 <input
@@ -37,7 +42,7 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   checked={timeFormat === '24h'}
                   onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
                 />
-                <span>24-hour (13:00)</span>
+                <span>{t('settings.timeFormat24h')}</span>
               </label>
               <label className="radio-option">
                 <input
@@ -47,13 +52,13 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   checked={timeFormat === '12h'}
                   onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
                 />
-                <span>12-hour (1:00 PM)</span>
+                <span>{t('settings.timeFormat12h')}</span>
               </label>
             </div>
           </div>
 
           <div className="setting-group">
-            <label className="setting-label">Week Starts On</label>
+            <label className="setting-label">{t('settings.weekStartsOn')}</label>
             <div className="setting-options">
               <label className="radio-option">
                 <input
@@ -63,7 +68,7 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   checked={weekStart === 'Monday'}
                   onChange={(e) => setWeekStart(e.target.value as WeekStart)}
                 />
-                <span>Monday</span>
+                <span>{t('settings.monday')}</span>
               </label>
               <label className="radio-option">
                 <input
@@ -73,18 +78,36 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
                   checked={weekStart === 'Sunday'}
                   onChange={(e) => setWeekStart(e.target.value as WeekStart)}
                 />
-                <span>Sunday</span>
+                <span>{t('settings.sunday')}</span>
               </label>
+            </div>
+          </div>
+
+          <div className="setting-group">
+            <label className="setting-label">{t('settings.language')}</label>
+            <div className="setting-options">
+              {AVAILABLE_LANGUAGES.map((lang) => (
+                <label key={lang.code} className="radio-option">
+                  <input
+                    type="radio"
+                    name="language"
+                    value={lang.code}
+                    checked={language === lang.code}
+                    onChange={(e) => setLanguage(e.target.value)}
+                  />
+                  <span>{lang.name}</span>
+                </label>
+              ))}
             </div>
           </div>
         </div>
 
         <div className="settings-footer">
           <button className="cancel-button" onClick={onClose}>
-            Cancel
+            {t('settings.cancel')}
           </button>
           <button className="submit-button" onClick={handleSave}>
-            Save Settings
+            {t('settings.save')}
           </button>
         </div>
       </div>

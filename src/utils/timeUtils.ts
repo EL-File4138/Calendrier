@@ -1,4 +1,5 @@
 import type { Weekday, TimeFormat, WeekStart } from '../types/Course';
+import i18n from '../i18n/config';
 
 export const WEEKDAYS: Weekday[] = [
   'Monday',
@@ -34,9 +35,15 @@ export const formatTime = (time: string, format: TimeFormat): string => {
   }
 
   const [hours, minutes] = time.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
+  const period = hours >= 12 ? i18n.t('time.pm') : i18n.t('time.am');
   const displayHours = hours % 12 || 12;
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  const timeString = `${displayHours}:${minutes.toString().padStart(2, '0')}`;
+
+  // Chinese places period before time, other languages place it after
+  if (i18n.language === 'zh') {
+    return `${period} ${timeString}`;
+  }
+  return `${timeString} ${period}`;
 };
 
 export const calculateTimeRange = (sessions: Array<{ startTime: string; endTime: string }>) => {
