@@ -2,12 +2,28 @@
   "toolbar": {
     "addCourse": "Dodaj",
     "addCourseTitle": "Dodaj kurs",
+    "export": "Eksportuj",
     "exportTitle": "Eksportuj JSON",
+    "import": "Importuj",
     "importTitle": "Importuj JSON",
+    "share": "Udostępnij",
     "shareTitle": "Udostępnij kalendarz",
+    "shareMenu": "Udostępnij",
+    "file": "Plik",
+    "saveAsImage": "Zapisz jako obraz",
     "saveAsImageTitle": "Zapisz jako obraz",
+    "print": "Drukuj",
     "printTitle": "Drukuj",
+    "newCalendar": "Nowy kalendarz",
     "newCalendarTitle": "Nowy kalendarz",
+    "saveToServer": "Zapisz na serwerze",
+    "saveToServerTitle": "Zapisz kalendarz na serwerze",
+    "saveToServerError": "Proszę najpierw utworzyć konto, aby zapisać kalendarze na serwerze",
+    "saveToServerSuccess": "Kalendarz zapisany na serwerze! ID: {{id}}...",
+    "saveToServerFailed": "Nie udało się zapisać na serwerze: {{error}}",
+    "deleteCalendar": "Usuń kalendarz",
+    "deleteCalendarTitle": "Usuń kalendarz z serwera",
+    "deleteCalendarFailed": "Nie udało się usunąć kalendarza: {{error}}",
     "settingsTitle": "Ustawienia",
     "darkModeTitle": "Przełącz tryb ciemny",
     "editTitlePlaceholder": "Kliknij, aby edytować tytuł"
@@ -75,6 +91,12 @@
       "message": "Plik kalendarza został dostarczony za pomocą adresu URL. Import zastąpi wszystkie bieżące dane kalendarza. Czy chcesz kontynuować?",
       "confirm": "Importuj",
       "cancel": "Anuluj"
+    },
+    "deleteCalendar": {
+      "title": "Usuń kalendarz",
+      "message": "Czy na pewno chcesz trwale usunąć ten kalendarz? Tej operacji nie można cofnąć. Wszyscy użytkownicy stracą dostęp.",
+      "confirm": "Usuń na stałe",
+      "cancel": "Anuluj"
     }
   },
   "share": {
@@ -124,5 +146,73 @@
     "failedToFetchCalendar": "Nie udało się pobrać danych kalendarza",
     "invalidCalendarFormat": "Nieprawidłowy format danych kalendarza",
     "failedToSaveImage": "Nie udało się zapisać obrazu"
+  },
+  "copyableId": {
+    "clickToCopy": "Kliknij, aby skopiować",
+    "copied": "Skopiowano!"
+  },
+  "shareDialog": {
+    "serverMode": {
+      "title": "Udostępnij kalendarz",
+      "calendarLink": "Link do kalendarza",
+      "calendarLinkDescription": "Udostępnij ten link każdemu. Zarejestrowani użytkownicy otrzymają aktualizacje na żywo, anonimowi użytkownicy zobaczą dane z pamięci podręcznej.",
+      "grantAccess": "Przyznaj dostęp użytkownikowi",
+      "grantAccessDescription": "Daj innemu zarejestrowanemu użytkownikowi dostęp do edycji tego kalendarza.",
+      "userId": "ID użytkownika",
+      "userIdPlaceholder": "Wprowadź ID użytkownika",
+      "accessLevel": "Poziom dostępu",
+      "accessLevelRead": "Tylko do odczytu (widok z aktualizacjami na żywo)",
+      "accessLevelWrite": "Zapis (można edytować)",
+      "accessLevelOwner": "Właściciel (może zarządzać dostępem)",
+      "grantButton": "Przyznaj dostęp",
+      "granting": "Przyznawanie...",
+      "currentAccess": "Bieżący dostęp",
+      "currentAccessDescription": "Użytkownicy, którzy obecnie mają dostęp do tego kalendarza.",
+      "loading": "Ładowanie...",
+      "noAccess": "Nie przyznano jeszcze dostępu żadnemu użytkownikowi.",
+      "userLabel": "Użytkownik:",
+      "accessLabel": "Dostęp:",
+      "revokeButton": "Cofnij",
+      "leaveButton": "Opuść kalendarz",
+      "selfBadge": "Ty",
+      "calendarId": "ID kalendarza:",
+      "leaveConfirm": "Czy na pewno chcesz opuścić ten kalendarz? Stracisz dostęp, chyba że ktoś przyzna Ci go ponownie.",
+      "revokeConfirm": "Czy na pewno chcesz cofnąć dostęp dla użytkownika {{userId}}?",
+      "leaveSuccess": "Pomyślnie opuszczono kalendarz",
+      "revokeSuccess": "Pomyślnie cofnięto dostęp",
+      "revokeFailed": "Nie udało się cofnąć dostępu",
+      "enterUserId": "Proszę wprowadzić ID użytkownika",
+      "grantSuccess": "Pomyślnie przyznano dostęp użytkownikowi {{userId}}...",
+      "grantFailed": "Nie udało się przyznać dostępu",
+      "error": "Błąd: {{error}}"
+    },
+    "tip": {
+      "title": "Wskazówka:",
+      "message": "Utwórz konto użytkownika i zapisz swój kalendarz na serwerze, aby łatwiej go udostępniać i współpracować w czasie rzeczywistym!"
+    }
+  },
+  "userPanel": {
+    "userStatus": "Status użytkownika",
+    "close": "Zamknij",
+    "createAccount": "Utwórz konto",
+    "createAccountHelp": "Wprowadź swój token aktywacyjny, aby utworzyć konto i rozpocząć synchronizację kalendarzy.",
+    "tokenPlaceholder": "Token aktywacyjny",
+    "displayNamePlaceholder": "Nazwa wyświetlana (opcjonalnie)",
+    "creating": "Tworzenie...",
+    "enterToken": "Proszę wprowadzić token aktywacyjny",
+    "accountCreated": "Konto utworzone pomyślnie! Możesz teraz tworzyć i synchronizować kalendarze.",
+    "createFailed": "Nie udało się utworzyć konta: {{error}}",
+    "statusNoUser": "Brak użytkownika",
+    "statusSynced": "Zsynchronizowano",
+    "statusRegistered": "Zarejestrowany",
+    "userIdLabel": "ID użytkownika:",
+    "statusLabel": "Status:",
+    "modeLabel": "Tryb:",
+    "modeServer": "Synchronizacja z serwerem",
+    "modeLocal": "Tylko lokalnie",
+    "syncing": "Synchronizowanie...",
+    "syncError": "Błąd synchronizacji: {{error}}",
+    "footerNoUser": "Utwórz użytkownika, aby włączyć funkcje serwera",
+    "footerHasUser": "Możesz teraz tworzyć i udostępniać kalendarze"
   }
 }

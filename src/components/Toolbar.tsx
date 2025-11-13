@@ -4,6 +4,8 @@ import { toPng } from 'html-to-image';
 import { useCalendar } from '../context/CalendarContext';
 import ConfirmDialog from './ConfirmDialog';
 import ShareDialog from './ShareDialog';
+import { UserPanel } from './UserPanel';
+import { ToolbarDropdown } from './ToolbarDropdown';
 import './Toolbar.css';
 
 interface ToolbarProps {
@@ -11,11 +13,24 @@ interface ToolbarProps {
   onOpenSettings: () => void;
 }
 
-type DialogType = 'new-calendar' | 'import-warning' | 'share' | null;
+type DialogType = 'new-calendar' | 'import-warning' | 'share' | 'delete-calendar' | null;
 
 const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const { t } = useTranslation();
-  const { title, exportData, importData, newCalendar, updateTitle, darkMode, toggleDarkMode } = useCalendar();
+  const {
+    title,
+    exportData,
+    importData,
+    newCalendar,
+    updateTitle,
+    darkMode,
+    toggleDarkMode,
+    syncMode,
+    userId,
+    createServerCalendar,
+    deleteCalendar,
+    hasWriteAccess,
+  } = useCalendar();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImportRef = useRef<string | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -165,6 +180,35 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     }
   };
 
+  const handleSaveToServer = async () => {
+    if (!userId) {
+      alert(t('toolbar.saveToServerError'));
+      return;
+    }
+
+    try {
+      const calendarId = await createServerCalendar();
+      alert(t('toolbar.saveToServerSuccess', { id: calendarId.substring(0, 8) }));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(t('toolbar.saveToServerFailed', { error: errorMessage }));
+    }
+  };
+
+  const handleDeleteCalendar = () => {
+    setDialog('delete-calendar');
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteCalendar();
+      setDialog(null);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(t('toolbar.deleteCalendarFailed', { error: errorMessage }));
+    }
+  };
+
   return (
     <>
       <div className="toolbar">
@@ -190,30 +234,68 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
           <button className="toolbar-button primary" onClick={onAddCourse} title={t('toolbar.addCourseTitle')}>
             ➕ {t('toolbar.addCourse')}
           </button>
-          <button className="toolbar-button btn-export" onClick={handleExport} title={t('toolbar.exportTitle')}>
-            💾
-          </button>
-          <button className="toolbar-button btn-import" onClick={handleImport} title={t('toolbar.importTitle')}>
-            📥
-          </button>
-          <button className="toolbar-button btn-share" onClick={() => setDialog('share')} title={t('toolbar.shareTitle')}>
-            <span role="img" aria-label="Share">🔗</span>
-          </button>
-          <button className="toolbar-button btn-image" onClick={handleSaveAsImage} title={t('toolbar.saveAsImageTitle')}>
-            🖼️
-          </button>
-          <button className="toolbar-button btn-print" onClick={handlePrint} title={t('toolbar.printTitle')}>
-            🖨️
-          </button>
-          <button className="toolbar-button btn-new" onClick={handleNewCalendar} title={t('toolbar.newCalendarTitle')}>
-            📄
-          </button>
+
+          <ToolbarDropdown
+            label={t('toolbar.file')}
+            icon="📁"
+            items={[
+              {
+                label: t('toolbar.newCalendar'),
+                icon: '📄',
+                onClick: handleNewCalendar,
+              },
+              {
+                label: t('toolbar.export'),
+                icon: '💾',
+                onClick: handleExport,
+              },
+              {
+                label: t('toolbar.import'),
+                icon: '📥',
+                onClick: handleImport,
+              },
+              {
+                label: t('toolbar.saveAsImage'),
+                icon: '🖼️',
+                onClick: handleSaveAsImage,
+              },
+              {
+                label: t('toolbar.print'),
+                icon: '🖨️',
+                onClick: handlePrint,
+              },
+            ]}
+          />
+
+          <ToolbarDropdown
+            label={t('toolbar.shareMenu')}
+            icon="🔗"
+            items={[
+              {
+                label: t('toolbar.share'),
+                icon: '🔗',
+                onClick: () => setDialog('share'),
+              },
+              ...(syncMode === 'local' && userId ? [{
+                label: t('toolbar.saveToServer'),
+                icon: '☁️',
+                onClick: handleSaveToServer,
+              }] : []),
+              ...(syncMode === 'server' && hasWriteAccess ? [{
+                label: t('toolbar.deleteCalendar'),
+                icon: '🗑️',
+                onClick: handleDeleteCalendar,
+              }] : []),
+            ]}
+          />
+
           <button className="toolbar-button btn-settings" onClick={onOpenSettings} title={t('toolbar.settingsTitle')}>
             ⚙️
           </button>
           <button className="toolbar-button btn-darkmode" onClick={toggleDarkMode} title={t('toolbar.darkModeTitle')}>
             {darkMode ? '☀️' : '🌙'}
           </button>
+          <UserPanel />
         </div>
 
         <input
@@ -255,6 +337,17 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
       {dialog === 'share' && (
         <ShareDialog onClose={() => setDialog(null)} />
+      )}
+
+      {dialog === 'delete-calendar' && (
+        <ConfirmDialog
+          title={t('dialogs.deleteCalendar.title')}
+          message={t('dialogs.deleteCalendar.message')}
+          confirmText={t('dialogs.deleteCalendar.confirm')}
+          cancelText={t('dialogs.deleteCalendar.cancel')}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDialog(null)}
+        />
       )}
     </>
   );

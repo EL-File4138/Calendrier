@@ -1,0 +1,90 @@
+.url-handler-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 400px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.url-handler-notification.info {
+  background-color: #2196F3;
+  color: white;
+}
+
+.url-handler-notification.success {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.url-handler-notification.error {
+  background-color: #f44336;
+  color: white;
+}
+
+.url-handler-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.url-handler-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.url-handler-message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.url-handler-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.url-handler-close:hover {
+  opacity: 1;
+}
+
+/* Dark mode adjustments */
+html.dark-mode .url-handler-notification {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

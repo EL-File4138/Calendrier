@@ -2,12 +2,28 @@
   "toolbar": {
     "addCourse": "添加",
     "addCourseTitle": "添加课程",
+    "export": "导出",
     "exportTitle": "导出 JSON",
+    "import": "导入",
     "importTitle": "导入 JSON",
+    "share": "分享",
     "shareTitle": "分享日历",
+    "shareMenu": "分享",
+    "file": "文件",
+    "saveAsImage": "保存为图片",
     "saveAsImageTitle": "保存为图片",
+    "print": "打印",
     "printTitle": "打印",
+    "newCalendar": "新建日历",
     "newCalendarTitle": "新建日历",
+    "saveToServer": "保存到服务器",
+    "saveToServerTitle": "将日历保存到服务器",
+    "saveToServerError": "请先创建账户以将日历保存到服务器",
+    "saveToServerSuccess": "日历已保存到服务器！ID：{{id}}...",
+    "saveToServerFailed": "保存到服务器失败：{{error}}",
+    "deleteCalendar": "删除日历",
+    "deleteCalendarTitle": "从服务器删除日历",
+    "deleteCalendarFailed": "删除日历失败：{{error}}",
     "settingsTitle": "设置",
     "darkModeTitle": "切换深色模式",
     "editTitlePlaceholder": "点击编辑标题"
@@ -75,6 +91,12 @@
       "message": "通过 URL 提供的日历文件。导入将替换当前所有日历数据。是否继续？",
       "confirm": "导入",
       "cancel": "取消"
+    },
+    "deleteCalendar": {
+      "title": "删除日历",
+      "message": "确定要永久删除此日历吗？此操作无法撤销。所有用户将失去访问权限。",
+      "confirm": "永久删除",
+      "cancel": "取消"
     }
   },
   "share": {
@@ -124,5 +146,73 @@
     "failedToFetchCalendar": "获取日历数据失败",
     "invalidCalendarFormat": "无效的日历数据格式",
     "failedToSaveImage": "保存图片失败"
+  },
+  "copyableId": {
+    "clickToCopy": "点击复制",
+    "copied": "已复制！"
+  },
+  "shareDialog": {
+    "serverMode": {
+      "title": "分享日历",
+      "calendarLink": "日历链接",
+      "calendarLinkDescription": "与任何人分享此链接。注册用户将获得实时更新，匿名用户将看到缓存数据。",
+      "grantAccess": "授予用户访问权限",
+      "grantAccessDescription": "授予另一个注册用户编辑此日历的权限。",
+      "userId": "用户 ID",
+      "userIdPlaceholder": "输入用户 ID",
+      "accessLevel": "访问级别",
+      "accessLevelRead": "只读（查看实时更新）",
+      "accessLevelWrite": "写入（可编辑）",
+      "accessLevelOwner": "所有者（可管理访问权限）",
+      "grantButton": "授予访问权限",
+      "granting": "正在授权...",
+      "currentAccess": "当前访问权限",
+      "currentAccessDescription": "当前可以访问此日历的用户。",
+      "loading": "加载中...",
+      "noAccess": "尚未授予任何用户访问权限。",
+      "userLabel": "用户：",
+      "accessLabel": "访问权限：",
+      "revokeButton": "撤销",
+      "leaveButton": "离开日历",
+      "selfBadge": "您",
+      "calendarId": "日历 ID：",
+      "leaveConfirm": "确定要离开此日历吗？除非有人再次授予您访问权限，否则您将失去访问权限。",
+      "revokeConfirm": "确定要撤销用户 {{userId}} 的访问权限吗？",
+      "leaveSuccess": "已成功离开日历",
+      "revokeSuccess": "已成功撤销访问权限",
+      "revokeFailed": "撤销访问权限失败",
+      "enterUserId": "请输入用户 ID",
+      "grantSuccess": "已成功授予用户 {{userId}}... 访问权限",
+      "grantFailed": "授予访问权限失败",
+      "error": "错误：{{error}}"
+    },
+    "tip": {
+      "title": "提示：",
+      "message": "创建用户账户并将日历保存到服务器，以便更轻松地分享和实时协作！"
+    }
+  },
+  "userPanel": {
+    "userStatus": "用户状态",
+    "close": "关闭",
+    "createAccount": "创建账户",
+    "createAccountHelp": "输入激活令牌以创建账户并开始同步日历。",
+    "tokenPlaceholder": "激活令牌",
+    "displayNamePlaceholder": "显示名称（可选）",
+    "creating": "创建中...",
+    "enterToken": "请输入激活令牌",
+    "accountCreated": "账户创建成功！您现在可以创建和同步日历了。",
+    "createFailed": "创建账户失败：{{error}}",
+    "statusNoUser": "无用户",
+    "statusSynced": "已同步",
+    "statusRegistered": "已注册",
+    "userIdLabel": "用户 ID：",
+    "statusLabel": "状态：",
+    "modeLabel": "模式：",
+    "modeServer": "服务器同步",
+    "modeLocal": "仅本地",
+    "syncing": "同步中...",
+    "syncError": "同步错误：{{error}}",
+    "footerNoUser": "创建用户以启用服务器功能",
+    "footerHasUser": "您现在可以创建和分享日历"
   }
 }

@@ -1,0 +1,330 @@
+.user-panel {
+  position: relative;
+}
+
+.user-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.user-panel-toggle:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.status-gray {
+  background-color: #999;
+}
+
+.status-indicator.status-orange {
+  background-color: #ff9800;
+}
+
+.status-indicator.status-green {
+  background-color: #4caf50;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.status-blue {
+  background-color: #2196f3;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  font-weight: 500;
+}
+
+.user-panel-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 350px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.user-panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.user-panel-content {
+  padding: 16px;
+}
+
+.user-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-section h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.help-text {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.help-text.small {
+  font-size: 12px;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.user-id {
+  font-family: 'Courier New', monospace;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.registered {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.user-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.user-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+.user-button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.user-button:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.user-button.primary {
+  background: #2196f3;
+  color: white;
+  border-color: #2196f3;
+}
+
+.user-button.primary:hover:not(:disabled) {
+  background: #1976d2;
+  border-color: #1976d2;
+}
+
+.user-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.sync-status.syncing {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.sync-status.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(25, 118, 210, 0.3);
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.user-panel-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  background: #f9f9f9;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Dark mode */
+html.dark-mode .user-panel-toggle {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+html.dark-mode .user-panel-toggle:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+html.dark-mode .user-panel-dropdown {
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+html.dark-mode .user-panel-header {
+  border-bottom-color: #444;
+}
+
+html.dark-mode .user-panel-header h3 {
+  color: #e0e0e0;
+}
+
+html.dark-mode .close-button {
+  color: #999;
+}
+
+html.dark-mode .close-button:hover {
+  color: #e0e0e0;
+}
+
+html.dark-mode .help-text {
+  color: #999;
+}
+
+html.dark-mode .user-info {
+  background: #1d1d1d;
+}
+
+html.dark-mode .user-id {
+  background: #2d2d2d;
+  color: #e0e0e0;
+}
+
+html.dark-mode .user-input {
+  background: #1d1d1d;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+html.dark-mode .user-input:focus {
+  border-color: #2196f3;
+}
+
+html.dark-mode .user-button {
+  background: #3d3d3d;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+html.dark-mode .user-button:hover:not(:disabled) {
+  background: #4d4d4d;
+}
+
+html.dark-mode .user-panel-footer {
+  background: #1d1d1d;
+  border-top-color: #444;
+}

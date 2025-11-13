@@ -6,6 +6,7 @@ import CourseForm from './components/CourseForm';
 import SettingsModal from './components/SettingsModal';
 import ConfirmDialog from './components/ConfirmDialog';
 import Toolbar from './components/Toolbar';
+import { URLHandler } from './components/URLHandler';
 import type { Weekday } from './types/Course';
 import './App.css';
 
@@ -84,7 +85,7 @@ function AppContent() {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, []);
+  }, [t]);
 
   const handleConfirmImport = () => {
     if (pendingImportRef.current) {
@@ -120,6 +121,7 @@ function AppContent() {
 
   return (
     <div className="app">
+      <URLHandler />
       <Toolbar onAddCourse={handleAddCourse} onOpenSettings={() => setShowSettings(true)} />
       <div className="app-content">
         <WeekCalendar

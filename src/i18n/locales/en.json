@@ -2,12 +2,28 @@
   "toolbar": {
     "addCourse": "Add",
     "addCourseTitle": "Add Course",
+    "export": "Export",
     "exportTitle": "Export JSON",
+    "import": "Import",
     "importTitle": "Import JSON",
+    "share": "Share",
     "shareTitle": "Share Calendar",
+    "shareMenu": "Share",
+    "file": "File",
+    "saveAsImage": "Save as Image",
     "saveAsImageTitle": "Save as Image",
+    "print": "Print",
     "printTitle": "Print",
+    "newCalendar": "New Calendar",
     "newCalendarTitle": "New Calendar",
+    "saveToServer": "Save to Server",
+    "saveToServerTitle": "Save calendar to server",
+    "saveToServerError": "Please create an account first to save calendars to the server",
+    "saveToServerSuccess": "Calendar saved to server! ID: {{id}}...",
+    "saveToServerFailed": "Failed to save to server: {{error}}",
+    "deleteCalendar": "Delete Calendar",
+    "deleteCalendarTitle": "Delete calendar from server",
+    "deleteCalendarFailed": "Failed to delete calendar: {{error}}",
     "settingsTitle": "Settings",
     "darkModeTitle": "Toggle dark mode",
     "editTitlePlaceholder": "Click to edit title"
@@ -75,6 +91,12 @@
       "message": "A calendar file was provided via URL. Importing will replace all current calendar data. Do you want to continue?",
       "confirm": "Import",
       "cancel": "Cancel"
+    },
+    "deleteCalendar": {
+      "title": "Delete Calendar",
+      "message": "Are you sure you want to permanently delete this calendar? This action cannot be undone. All users will lose access.",
+      "confirm": "Delete Permanently",
+      "cancel": "Cancel"
     }
   },
   "share": {
@@ -124,5 +146,73 @@
     "failedToFetchCalendar": "Failed to fetch calendar data",
     "invalidCalendarFormat": "Invalid calendar data format",
     "failedToSaveImage": "Failed to save image"
+  },
+  "copyableId": {
+    "clickToCopy": "Click to copy",
+    "copied": "Copied!"
+  },
+  "shareDialog": {
+    "serverMode": {
+      "title": "Share Calendar",
+      "calendarLink": "Calendar Link",
+      "calendarLinkDescription": "Share this link with anyone. Registered users will get live updates, anonymous users will see cached data.",
+      "grantAccess": "Grant Access to User",
+      "grantAccessDescription": "Give another registered user access to edit this calendar.",
+      "userId": "User ID",
+      "userIdPlaceholder": "Enter user ID",
+      "accessLevel": "Access Level",
+      "accessLevelRead": "Read Only (view with live updates)",
+      "accessLevelWrite": "Write (can edit)",
+      "accessLevelOwner": "Owner (can manage access)",
+      "grantButton": "Grant Access",
+      "granting": "Granting...",
+      "currentAccess": "Current Access",
+      "currentAccessDescription": "Users who currently have access to this calendar.",
+      "loading": "Loading...",
+      "noAccess": "No users have been granted access yet.",
+      "userLabel": "User:",
+      "accessLabel": "Access:",
+      "revokeButton": "Revoke",
+      "leaveButton": "Leave Calendar",
+      "selfBadge": "You",
+      "calendarId": "Calendar ID:",
+      "leaveConfirm": "Are you sure you want to leave this calendar? You will lose access unless someone grants it to you again.",
+      "revokeConfirm": "Are you sure you want to revoke access for user {{userId}}?",
+      "leaveSuccess": "Successfully left the calendar",
+      "revokeSuccess": "Access revoked successfully",
+      "revokeFailed": "Failed to revoke access",
+      "enterUserId": "Please enter a user ID",
+      "grantSuccess": "Access granted successfully to user {{userId}}...",
+      "grantFailed": "Failed to grant access",
+      "error": "Error: {{error}}"
+    },
+    "tip": {
+      "title": "Tip:",
+      "message": "Create a user account and save your calendar to the server for easier sharing and real-time collaboration!"
+    }
+  },
+  "userPanel": {
+    "userStatus": "User Status",
+    "close": "Close",
+    "createAccount": "Create Account",
+    "createAccountHelp": "Enter your activation token to create an account and start syncing calendars.",
+    "tokenPlaceholder": "Activation Token",
+    "displayNamePlaceholder": "Display Name (optional)",
+    "creating": "Creating...",
+    "enterToken": "Please enter an activation token",
+    "accountCreated": "Account created successfully! You can now create and sync calendars.",
+    "createFailed": "Failed to create account: {{error}}",
+    "statusNoUser": "No User",
+    "statusSynced": "Synced",
+    "statusRegistered": "Registered",
+    "userIdLabel": "User ID:",
+    "statusLabel": "Status:",
+    "modeLabel": "Mode:",
+    "modeServer": "Server Sync",
+    "modeLocal": "Local Only",
+    "syncing": "Syncing...",
+    "syncError": "Sync Error: {{error}}",
+    "footerNoUser": "Create a user to enable server features",
+    "footerHasUser": "You can now create and share calendars"
   }
 }

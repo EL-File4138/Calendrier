@@ -61,7 +61,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
 
   const handleSessionChange = (index: number, field: keyof Omit<Session, 'id'>, value: string) => {
     const newSessions = [...sessions];
-    (newSessions[index] as any)[field] = value;
+    newSessions[index] = { ...newSessions[index], [field]: value };
     setSessions(newSessions);
   };
 

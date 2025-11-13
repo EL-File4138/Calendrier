@@ -1,0 +1,41 @@
+name = "calendrier-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Durable Objects
+[durable_objects]
+bindings = [
+  { name = "CALENDAR_DO", class_name = "CalendarDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CalendarDO"]
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "CALENDAR_CACHE"
+id = "YOUR_CALENDAR_CACHE_KV_ID"
+preview_id = "YOUR_CALENDAR_CACHE_PREVIEW_KV_ID"
+
+[[kv_namespaces]]
+binding = "ACTIVATION_TOKENS"
+id = "YOUR_ACTIVATION_TOKENS_KV_ID"
+preview_id = "YOUR_ACTIVATION_TOKENS_PREVIEW_KV_ID"
+
+[[kv_namespaces]]
+binding = "USERS"
+id = "YOUR_USERS_KV_ID"
+preview_id = "YOUR_USERS_PREVIEW_KV_ID"
+
+# Secrets
+# Set these using: wrangler secret put <SECRET_NAME>
+# For development, add to .dev.vars file
+# - ADMIN_MASTER_TOKEN: Master token for admin API authentication
+
+# Build configuration
+[build]
+command = "npm run build"
+
+[build.upload]
+format = "service-worker"
