@@ -61,3 +61,7 @@ tmp
 .history
 .vercel
 stats.html
+
+# Agentic Working doc
+docs/agentic-working/*
+AGENTS.md

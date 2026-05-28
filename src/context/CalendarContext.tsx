@@ -1,14 +1,36 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { Course, CalendarData, Settings } from '../types/Course';
+import type { Course, CalendarData, Settings, Weekday } from '../types/Course';
 import type { WSUpdateMessage, WSPresenceMessage } from '../api/types';
 import { getNextColor } from '../utils/colors';
 import { calendarAPI } from '../api/client';
 
 const STORAGE_KEY = 'academic-calendar-data';
 const USER_ID_KEY = 'calendrier-user-id';
+const SESSION_TOKEN_KEY = 'calendrier-session-token';
 const CALENDAR_ID_KEY = 'calendrier-calendar-id';
 const USER_REGISTERED_KEY = 'calendrier-user-registered';
+const WEEKDAYS: Weekday[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const safeLocalStorage = {
+  getItem(key: string) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem(key: string, value: string) {
+    window.localStorage.setItem(key, value);
+  },
+  removeItem(key: string) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore unavailable storage during cleanup.
+    }
+  },
+};
 
 type SyncMode = 'local' | 'server';
 
@@ -22,8 +44,10 @@ interface CalendarContextType {
   // Sync state
   syncMode: SyncMode;
   userId: string | null;
+  sessionToken: string | null;
   calendarId: string | null;
   isRegistered: boolean;
+  isLoaded: boolean;
   hasWriteAccess: boolean;
   isSyncing: boolean;
   lastSyncError: string | null;
@@ -37,11 +61,11 @@ interface CalendarContextType {
   updateTitle: (title: string) => Promise<void>;
   updateSettings: (settings: Partial<Settings>) => Promise<void>;
   toggleDarkMode: () => void;
-  newCalendar: () => void;
+  newCalendar: () => Promise<void>;
 
   // Import/Export (local JSON)
   exportData: () => string;
-  importData: (jsonString: string) => void;
+  importData: (jsonString: string) => Promise<void>;
 
   // Server operations
   createServerCalendar: () => Promise<string>;
@@ -49,7 +73,7 @@ interface CalendarContextType {
   syncToServer: () => Promise<void>;
   deleteCalendar: () => Promise<void>;
   grantAccess: (targetUserId: string, level: 'owner' | 'write' | 'read') => Promise<boolean>;
-  revokeAccess: (targetUserId: string) => Promise<boolean>;
+  revokeAccess: (targetUserId: string) => Promise<{ success: boolean; message?: string; shouldDestroy?: boolean }>;
   listPrivileges: () => Promise<Array<{userId: string; level: string; grantedAt: number; grantedBy: string}>>;
 
   // Presence
@@ -63,6 +87,58 @@ const defaultSettings: Settings = {
   weekStart: 'Monday',
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  typeof value === 'object' && value !== null
+);
+
+const sanitizeCalendarData = (value: unknown): CalendarData => {
+  if (!isRecord(value)) {
+    return { courses: [] };
+  }
+
+  const courses = Array.isArray(value.courses)
+    ? value.courses.flatMap((course): Course[] => {
+      if (!isRecord(course)) return [];
+
+      const sessions = Array.isArray(course.sessions)
+        ? course.sessions.flatMap((session): Course['sessions'] => {
+          if (!isRecord(session) || !WEEKDAYS.includes(session.meetDay as Weekday)) return [];
+
+          return [{
+            id: typeof session.id === 'string' ? session.id : crypto.randomUUID(),
+            meetDay: session.meetDay as Weekday,
+            startTime: typeof session.startTime === 'string' ? session.startTime : '09:00',
+            endTime: typeof session.endTime === 'string' ? session.endTime : '10:00',
+            sessionType: typeof session.sessionType === 'string' ? session.sessionType : undefined,
+            instructor: typeof session.instructor === 'string' ? session.instructor : undefined,
+            location: typeof session.location === 'string' ? session.location : undefined,
+          }];
+        })
+        : [];
+
+      return [{
+        id: typeof course.id === 'string' ? course.id : crypto.randomUUID(),
+        title: typeof course.title === 'string' ? course.title : 'Untitled course',
+        color: typeof course.color === 'string' ? course.color : getNextColor([]),
+        sessions,
+      }];
+    })
+    : [];
+
+  const settings = isRecord(value.settings)
+    ? {
+      timeFormat: value.settings.timeFormat === '12h' ? '12h' : '24h',
+      weekStart: value.settings.weekStart === 'Sunday' ? 'Sunday' : 'Monday',
+    } satisfies Settings
+    : undefined;
+
+  return {
+    courses,
+    title: typeof value.title === 'string' ? value.title : undefined,
+    settings,
+  };
+};
+
 export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -73,6 +149,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   // Sync state
   const [syncMode, setSyncMode] = useState<SyncMode>('local');
   const [userId, setUserId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [calendarId, setCalendarId] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [hasWriteAccess, setHasWriteAccess] = useState(false);
@@ -86,6 +163,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const syncTimeoutRef = useRef<number | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
+  const syncStateRef = useRef({ syncMode, calendarId, userId, sessionToken });
 
   // Refs to always access latest state in callbacks
   const latestDataRef = useRef({ title, courses, settings, version });
@@ -95,31 +173,45 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     latestDataRef.current = { title, courses, settings, version };
   }, [title, courses, settings, version]);
 
+  useEffect(() => {
+    syncStateRef.current = { syncMode, calendarId, userId, sessionToken };
+  }, [syncMode, calendarId, userId, sessionToken]);
+
+  useEffect(() => {
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Load from localStorage on mount
   useEffect(() => {
     const initializeCalendar = async () => {
       try {
         // Load user ID
-        const savedUserId = localStorage.getItem(USER_ID_KEY);
+        const savedUserId = safeLocalStorage.getItem(USER_ID_KEY);
         if (savedUserId) {
           setUserId(savedUserId);
+          setSessionToken(safeLocalStorage.getItem(SESSION_TOKEN_KEY));
 
           // Load registration status
-          const savedRegistered = localStorage.getItem(USER_REGISTERED_KEY);
+          const savedRegistered = safeLocalStorage.getItem(USER_REGISTERED_KEY);
           if (savedRegistered === 'true') {
             setIsRegistered(true);
           }
         }
 
         // Load calendar ID and fetch from server if available
-        const savedCalendarId = localStorage.getItem(CALENDAR_ID_KEY);
-        if (savedCalendarId && savedUserId) {
+        const savedCalendarId = safeLocalStorage.getItem(CALENDAR_ID_KEY);
+        const savedSessionToken = safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+        if (savedCalendarId && savedUserId && savedSessionToken) {
           setCalendarId(savedCalendarId);
           setSyncMode('server');
 
           // Load calendar from server
           try {
-            const response = await calendarAPI.readCalendar(savedCalendarId, savedUserId);
+            const response = await calendarAPI.readCalendar(savedCalendarId, savedUserId, savedSessionToken);
             setCourses(response.data.courses);
             if (response.data.title) setTitle(response.data.title);
             if (response.data.settings) setSettings({ ...defaultSettings, ...response.data.settings });
@@ -128,17 +220,15 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
             setHasCalendarAccess(true);
           } catch (error) {
             console.error('Failed to load saved calendar:', error);
-            // Fall back to local data
             setSyncMode('local');
+            safeLocalStorage.removeItem(CALENDAR_ID_KEY);
           }
         } else {
           // Load local data if no server calendar
-          const saved = localStorage.getItem(STORAGE_KEY);
+          const saved = safeLocalStorage.getItem(STORAGE_KEY);
           if (saved) {
-            const data: CalendarData = JSON.parse(saved);
-            if (data.courses && Array.isArray(data.courses)) {
-              setCourses(data.courses);
-            }
+            const data = sanitizeCalendarData(JSON.parse(saved));
+            setCourses(data.courses);
             if (data.title) {
               setTitle(data.title);
             }
@@ -149,7 +239,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Load dark mode preference
-        const savedDarkMode = localStorage.getItem('dark-mode');
+        const savedDarkMode = safeLocalStorage.getItem('dark-mode');
         if (savedDarkMode) {
           setDarkMode(savedDarkMode === 'true');
         } else {
@@ -173,7 +263,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     if (syncMode === 'local') {
       try {
         const data: CalendarData = { title, courses, settings };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (error) {
         console.error('Failed to save data to localStorage:', error);
 
@@ -210,7 +300,11 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isLoaded) return;
 
-    localStorage.setItem('dark-mode', darkMode.toString());
+    try {
+      safeLocalStorage.setItem('dark-mode', darkMode.toString());
+    } catch {
+      // Keep rendering even when browser storage is unavailable.
+    }
     if (darkMode) {
       document.documentElement.classList.add('dark-mode');
     } else {
@@ -243,7 +337,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     if (!calendarId || !userId) return;
 
     try {
-      const ws = calendarAPI.connectWebSocket(calendarId, userId);
+      if (!sessionToken) return;
+      const ws = calendarAPI.connectWebSocket(calendarId, userId, sessionToken);
 
       ws.onopen = () => {
         reconnectAttemptsRef.current = 0; // Reset on successful connection
@@ -296,7 +391,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
           reconnectAttemptsRef.current += 1;
 
           reconnectTimeoutRef.current = window.setTimeout(() => {
-            if (syncMode === 'server' && calendarId && userId) {
+            const current = syncStateRef.current;
+            if (current.syncMode === 'server' && current.calendarId && current.userId && current.sessionToken) {
               connectWebSocket();
             }
           }, delay);
@@ -313,7 +409,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const syncToServer = useCallback(async () => {
-    if (syncMode !== 'server' || !calendarId || !userId || !hasWriteAccess) {
+    if (syncMode !== 'server' || !calendarId || !userId || !sessionToken || !hasWriteAccess) {
       return;
     }
 
@@ -324,7 +420,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       // Use ref to get the latest data
       const { title: currentTitle, courses: currentCourses, settings: currentSettings, version: currentVersion } = latestDataRef.current;
       const data: CalendarData = { title: currentTitle, courses: currentCourses, settings: currentSettings };
-      const response = await calendarAPI.writeCalendar(calendarId, userId, data, currentVersion);
+      const response = await calendarAPI.writeCalendar(calendarId, userId, sessionToken, data, currentVersion);
 
       if (response.success) {
         setVersion(response.version);
@@ -339,7 +435,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsSyncing(false);
     }
-  }, [syncMode, calendarId, userId, hasWriteAccess]);
+  }, [syncMode, calendarId, userId, sessionToken, hasWriteAccess]);
 
   const debouncedSync = useCallback(() => {
     if (syncTimeoutRef.current) {
@@ -441,7 +537,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     // Auto-revoke from current calendar if in server mode
     if (syncMode === 'server' && calendarId && userId) {
       try {
-        await calendarAPI.revokePrivilege(calendarId, userId, userId); // Self-revoke
+        if (sessionToken) {
+          await calendarAPI.revokePrivilege(calendarId, userId, sessionToken, userId); // Self-revoke
+        }
       } catch (error) {
         console.error('Failed to auto-revoke on new calendar:', error);
         // Continue anyway - user wanted to create new calendar
@@ -455,7 +553,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     setSyncMode('local');
     setHasWriteAccess(false);
     setHasCalendarAccess(false);
-    localStorage.removeItem(CALENDAR_ID_KEY);
+    setVersion(1);
+    setLastSyncError(null);
+    safeLocalStorage.removeItem(CALENDAR_ID_KEY);
 
     // Remove calendar ID from URL
     const url = new URL(window.location.href);
@@ -470,25 +570,18 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     return JSON.stringify(data, null, 2);
   };
 
-  const importData = (jsonString: string) => {
+  const importData = async (jsonString: string) => {
     try {
-      const data: CalendarData = JSON.parse(jsonString);
-      if (data.courses && Array.isArray(data.courses)) {
-        const validatedCourses = data.courses.map(course => ({
-          ...course,
-          id: course.id || crypto.randomUUID(),
-          sessions: course.sessions.map(session => ({
-            ...session,
-            id: session.id || crypto.randomUUID(),
-          })),
-        }));
-        setCourses(validatedCourses);
-      }
+      const data = sanitizeCalendarData(JSON.parse(jsonString));
+      setCourses(data.courses);
       if (data.title) {
         setTitle(data.title);
       }
       if (data.settings) {
         setSettings({ ...defaultSettings, ...data.settings });
+      }
+      if (syncMode === 'server' && hasWriteAccess) {
+        debouncedSync();
       }
     } catch (error) {
       console.error('Failed to import data:', error);
@@ -497,7 +590,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createServerCalendar = async (): Promise<string> => {
-    if (!userId) {
+    if (!userId || !sessionToken) {
       throw new Error('User must be logged in to create server calendars');
     }
 
@@ -505,7 +598,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     const previousCalendarId = calendarId;
     if (syncMode === 'server' && previousCalendarId) {
       try {
-        await calendarAPI.revokePrivilege(previousCalendarId, userId, userId); // Self-revoke
+        await calendarAPI.revokePrivilege(previousCalendarId, userId, sessionToken, userId); // Self-revoke
       } catch (error) {
         console.error('Failed to auto-revoke from previous calendar:', error);
         // Continue anyway - user wanted to create new calendar
@@ -514,12 +607,14 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const data: CalendarData = { title, courses, settings };
-      const response = await calendarAPI.createCalendar(userId, data);
+      const response = await calendarAPI.createCalendar(userId, sessionToken, data);
       setCalendarId(response.calendarId);
       setSyncMode('server');
       setHasWriteAccess(true);
       setHasCalendarAccess(true); // Owner has full access
-      localStorage.setItem(CALENDAR_ID_KEY, response.calendarId);
+      setVersion(1);
+      setLastSyncError(null);
+      safeLocalStorage.setItem(CALENDAR_ID_KEY, response.calendarId);
 
       // Update URL to include calendar ID
       const url = new URL(window.location.href);
@@ -536,9 +631,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const loadServerCalendar = async (calId: string): Promise<void> => {
     // Auto-revoke from current calendar if switching
     const previousCalendarId = calendarId;
-    if (syncMode === 'server' && previousCalendarId && previousCalendarId !== calId && userId) {
+    if (syncMode === 'server' && previousCalendarId && previousCalendarId !== calId && userId && sessionToken) {
       try {
-        await calendarAPI.revokePrivilege(previousCalendarId, userId, userId); // Self-revoke
+        await calendarAPI.revokePrivilege(previousCalendarId, userId, sessionToken, userId); // Self-revoke
       } catch (error) {
         console.error('Failed to auto-revoke from previous calendar:', error);
         // Continue anyway - user wanted to load different calendar
@@ -546,7 +641,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const response = await calendarAPI.readCalendar(calId, userId || undefined);
+      const response = await calendarAPI.readCalendar(calId, userId || undefined, sessionToken || undefined);
       setCourses(response.data.courses);
       if (response.data.title) setTitle(response.data.title);
       if (response.data.settings) setSettings(response.data.settings);
@@ -555,7 +650,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       setHasCalendarAccess(true); // Successfully loaded = has access
       setCalendarId(calId);
       setSyncMode('server');
-      localStorage.setItem(CALENDAR_ID_KEY, calId);
+      safeLocalStorage.setItem(CALENDAR_ID_KEY, calId);
 
       // Update URL to include calendar ID
       const url = new URL(window.location.href);
@@ -568,12 +663,12 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const grantAccess = async (targetUserId: string, level: 'owner' | 'write' | 'read'): Promise<boolean> => {
-    if (!calendarId || !userId) {
+    if (!calendarId || !userId || !sessionToken) {
       throw new Error('No calendar or user ID');
     }
 
     try {
-      const response = await calendarAPI.grantPrivilege(calendarId, userId, targetUserId, level);
+      const response = await calendarAPI.grantPrivilege(calendarId, userId, sessionToken, targetUserId, level);
       return response.success;
     } catch (error: unknown) {
       console.error('Failed to grant access:', error);
@@ -581,14 +676,13 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const revokeAccess = async (targetUserId: string): Promise<boolean> => {
-    if (!calendarId || !userId) {
+  const revokeAccess = async (targetUserId: string): Promise<{ success: boolean; message?: string; shouldDestroy?: boolean }> => {
+    if (!calendarId || !userId || !sessionToken) {
       throw new Error('No calendar or user ID');
     }
 
     try {
-      const response = await calendarAPI.revokePrivilege(calendarId, userId, targetUserId);
-      return response.success;
+      return await calendarAPI.revokePrivilege(calendarId, userId, sessionToken, targetUserId);
     } catch (error: unknown) {
       console.error('Failed to revoke access:', error);
       throw error;
@@ -596,12 +690,12 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const listPrivileges = async (): Promise<Array<{userId: string; level: string; grantedAt: number; grantedBy: string}>> => {
-    if (!calendarId || !userId) {
+    if (!calendarId || !userId || !sessionToken) {
       throw new Error('No calendar or user ID');
     }
 
     try {
-      const response = await calendarAPI.listPrivileges(calendarId, userId);
+      const response = await calendarAPI.listPrivileges(calendarId, userId, sessionToken);
       if (response.success && response.privileges) {
         return response.privileges;
       }
@@ -613,12 +707,12 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteCalendar = async (): Promise<void> => {
-    if (!calendarId || !userId) {
+    if (!calendarId || !userId || !sessionToken) {
       throw new Error('No calendar or user ID');
     }
 
     try {
-      await calendarAPI.deleteCalendar(calendarId, userId);
+      await calendarAPI.deleteCalendar(calendarId, userId, sessionToken);
 
       // Reset to local mode after deletion
       setCourses([]);
@@ -628,7 +722,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       setSyncMode('local');
       setHasWriteAccess(false);
       setHasCalendarAccess(false);
-      localStorage.removeItem(CALENDAR_ID_KEY);
+      setVersion(1);
+      setLastSyncError(null);
+      safeLocalStorage.removeItem(CALENDAR_ID_KEY);
 
       // Remove calendar ID from URL
       const url = new URL(window.location.href);
@@ -651,8 +747,10 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         darkMode,
         syncMode,
         userId,
+        sessionToken,
         calendarId,
         isRegistered,
+        isLoaded,
         hasWriteAccess,
         isSyncing,
         lastSyncError,

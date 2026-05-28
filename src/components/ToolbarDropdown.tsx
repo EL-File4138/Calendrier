@@ -1,71 +1,68 @@
-import { useState, useRef, useEffect } from 'react';
-import './ToolbarDropdown.css';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { Dropdown, DropdownList, DropdownItem, MenuToggle } from '@patternfly/react-core';
 
-interface DropdownItem {
+interface DropdownItemType {
   label: string;
-  icon?: string;
+  icon?: ReactNode;
   onClick: () => void;
   disabled?: boolean;
 }
 
 interface ToolbarDropdownProps {
   label: string;
-  icon: string;
-  items: DropdownItem[];
+  icon: ReactNode;
+  items: DropdownItemType[];
   className?: string;
 }
 
 export const ToolbarDropdown = ({ label, icon, items, className = '' }: ToolbarDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
+  const onToggle = () => {
+    setIsOpen(!isOpen);
+  };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const handleItemClick = (item: DropdownItem) => {
-    if (!item.disabled) {
-      item.onClick();
-      setIsOpen(false);
-    }
+  const onSelect = () => {
+    setIsOpen(false);
   };
 
   return (
-    <div className={`toolbar-dropdown ${className}`} ref={dropdownRef}>
-      <button
-        className="toolbar-button dropdown-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        title={label}
-      >
-        {icon} <span className="dropdown-arrow">▼</span>
-      </button>
-      {isOpen && (
-        <div className="dropdown-menu">
-          {items.map((item, index) => (
-            <button
-              key={index}
-              className={`dropdown-item ${item.disabled ? 'disabled' : ''}`}
-              onClick={() => handleItemClick(item)}
-              disabled={item.disabled}
-            >
-              {item.icon && <span className="dropdown-item-icon">{item.icon}</span>}
-              <span className="dropdown-item-label">{item.label}</span>
-            </button>
-          ))}
-        </div>
+    <Dropdown
+      isOpen={isOpen}
+      onSelect={onSelect}
+      onOpenChange={setIsOpen}
+      toggle={(toggleRef) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={onToggle}
+          isExpanded={isOpen}
+          className={className}
+        >
+          <span className="toolbar-dropdown-toggle__content">
+            <span className="toolbar-dropdown-toggle__icon" aria-hidden="true">{icon}</span>
+            <span>{label}</span>
+          </span>
+        </MenuToggle>
       )}
-    </div>
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
+        {items.map((item, index) => (
+          <DropdownItem
+            key={index}
+            onClick={() => {
+              if (!item.disabled) {
+                item.onClick();
+              }
+            }}
+            isDisabled={item.disabled}
+          >
+            {item.icon && <span className="toolbar-dropdown-item__icon" aria-hidden="true">{item.icon}</span>}
+            {item.label}
+          </DropdownItem>
+        ))}
+      </DropdownList>
+    </Dropdown>
   );
 };

@@ -6,8 +6,25 @@ import en from './locales/en.json';
 import zh from './locales/zh.json';
 import pl from './locales/pl.json';
 
+const safeStorage = {
+  getItem(key: string) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem(key: string, value: string) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Storage can be unavailable in private or restricted browser contexts.
+    }
+  },
+};
+
 // Get saved language from localStorage or use browser detection
-const savedLanguage = localStorage.getItem('calendrier-language');
+const savedLanguage = safeStorage.getItem('calendrier-language');
 
 i18n
   .use(LanguageDetector)
@@ -32,7 +49,7 @@ i18n
 
 // Save language changes to localStorage
 i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('calendrier-language', lng);
+  safeStorage.setItem('calendrier-language', lng);
 });
 
 export default i18n;

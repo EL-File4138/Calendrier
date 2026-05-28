@@ -1,10 +1,29 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Modal,
+  ModalVariant,
+  ModalBody,
+  ModalFooter,
+  Button,
+  ButtonVariant,
+  Form,
+  FormGroup,
+  TextInput,
+  FormSection,
+  FormSelect,
+  FormSelectOption,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Divider
+} from '@patternfly/react-core';
+import { TrashIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import type { Session, Weekday } from '../types/Course';
 import { WEEKDAYS } from '../utils/timeUtils';
 import { getNextColor } from '../utils/colors';
 import { useCalendar } from '../context/CalendarContext';
-import './CourseForm.css';
 
 interface CourseFormProps {
   courseId?: string;
@@ -65,8 +84,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
     setSessions(newSessions);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     if (!title.trim()) {
       alert(t('courseForm.titleRequired'));
       return;
@@ -94,167 +112,162 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{courseId ? t('courseForm.titleEdit') : t('courseForm.titleAdd')}</h2>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>
-              {t('courseForm.courseTitle')} <span className="required">*</span>
-            </label>
-            <input
+    <Modal
+      variant={ModalVariant.large}
+      title={courseId ? t('courseForm.titleEdit') : t('courseForm.titleAdd')}
+      isOpen={true}
+      onClose={onClose}
+    >
+      <ModalBody>
+        <Form>
+        <div className="course-form-grid course-form-grid--title">
+          <FormGroup
+            label={t('courseForm.courseTitle')}
+            isRequired
+            fieldId="course-title"
+          >
+            <TextInput
+              id="course-title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(_event, value) => setTitle(value)}
               placeholder={t('courseForm.courseTitlePlaceholder')}
-              required
+              isRequired
             />
-          </div>
+          </FormGroup>
 
-          <div className="form-group">
-            <label>{t('courseForm.color')}</label>
+          <FormGroup
+            label={t('courseForm.color')}
+            fieldId="course-color"
+          >
             <input
+              id="course-color"
               type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
+              className="course-color-picker"
             />
-          </div>
+          </FormGroup>
+        </div>
 
-          <div className="sessions-section">
-            <h3>{t('courseForm.sessions')}</h3>
-            {sessions.map((session, index) => (
-              <div key={index} className="session-group">
-                <div className="session-header">
-                  <h4>{t('courseForm.sessionNumber', { number: index + 1 })}</h4>
-                  {sessions.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-session-button"
-                      onClick={() => handleRemoveSession(index)}
-                    >
-                      {t('courseForm.removeSession')}
-                    </button>
-                  )}
-                </div>
+        <Divider className="pf-v6-u-my-lg" />
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>
-                      {t('courseForm.day')} <span className="required">*</span>
-                    </label>
-                    <select
-                      value={session.meetDay}
-                      onChange={(e) =>
-                        handleSessionChange(index, 'meetDay', e.target.value)
-                      }
-                      required
-                    >
-                      {WEEKDAYS.map(day => (
-                        <option key={day} value={day}>
-                          {t(`weekdays.${day.toLowerCase()}`)}
-                        </option>
-                      ))}
-                    </select>
+        <FormSection title={t('courseForm.sessions')}>
+          {sessions.map((session, index) => (
+            <Card key={index} className="pf-v6-u-mb-md">
+              <CardHeader>
+                <CardTitle>
+                  <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center">
+                    <span>{t('courseForm.sessionNumber', { number: index + 1 })}</span>
+                    {sessions.length > 1 && (
+                      <Button
+                        variant={ButtonVariant.plain}
+                        isDanger
+                        icon={<TrashIcon />}
+                        onClick={() => handleRemoveSession(index)}
+                        aria-label={t('courseForm.removeSession')}
+                      />
+                    )}
                   </div>
+                </CardTitle>
+              </CardHeader>
+              <CardBody>
 
-                  <div className="form-group">
-                    <label>
-                      {t('courseForm.startTime')} <span className="required">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={session.startTime}
-                      onChange={(e) =>
-                        handleSessionChange(index, 'startTime', e.target.value)
-                      }
-                      required
-                    />
-                  </div>
+              <div className="course-form-grid course-form-grid--three pf-v6-u-mb-md">
+                <FormGroup label={t('courseForm.day')} isRequired fieldId={`session-${index}-day`}>
+                  <FormSelect
+                    id={`session-${index}-day`}
+                    value={session.meetDay}
+                    onChange={(_event, value) => handleSessionChange(index, 'meetDay', value as string)}
+                    isRequired
+                  >
+                    {WEEKDAYS.map(day => (
+                      <FormSelectOption key={day} value={day} label={t(`weekdays.${day.toLowerCase()}`)} />
+                    ))}
+                  </FormSelect>
+                </FormGroup>
 
-                  <div className="form-group">
-                    <label>
-                      {t('courseForm.endTime')} <span className="required">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={session.endTime}
-                      onChange={(e) =>
-                        handleSessionChange(index, 'endTime', e.target.value)
-                      }
-                      required
-                    />
-                  </div>
-                </div>
+                <FormGroup label={t('courseForm.startTime')} isRequired fieldId={`session-${index}-start`}>
+                  <TextInput
+                    id={`session-${index}-start`}
+                    type="time"
+                    value={session.startTime}
+                    onChange={(_event, value) => handleSessionChange(index, 'startTime', value)}
+                    isRequired
+                  />
+                </FormGroup>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{t('courseForm.sessionType')}</label>
-                    <input
-                      type="text"
-                      value={session.sessionType || ''}
-                      onChange={(e) =>
-                        handleSessionChange(index, 'sessionType', e.target.value)
-                      }
-                      placeholder={t('courseForm.sessionTypePlaceholder')}
-                    />
-                  </div>
+                <FormGroup label={t('courseForm.endTime')} isRequired fieldId={`session-${index}-end`}>
+                  <TextInput
+                    id={`session-${index}-end`}
+                    type="time"
+                    value={session.endTime}
+                    onChange={(_event, value) => handleSessionChange(index, 'endTime', value)}
+                    isRequired
+                  />
+                </FormGroup>
+              </div>
 
-                  <div className="form-group">
-                    <label>{t('courseForm.location')}</label>
-                    <input
-                      type="text"
-                      value={session.location || ''}
-                      onChange={(e) =>
-                        handleSessionChange(index, 'location', e.target.value)
-                      }
-                      placeholder={t('courseForm.locationPlaceholder')}
-                    />
-                  </div>
-                </div>
+              <div className="course-form-grid course-form-grid--three">
+                <FormGroup label={t('courseForm.sessionType')} fieldId={`session-${index}-type`}>
+                  <TextInput
+                    id={`session-${index}-type`}
+                    type="text"
+                    value={session.sessionType || ''}
+                    onChange={(_event, value) => handleSessionChange(index, 'sessionType', value)}
+                    placeholder={t('courseForm.sessionTypePlaceholder')}
+                  />
+                </FormGroup>
 
-                <div className="form-group">
-                  <label>{t('courseForm.instructor')}</label>
-                  <input
+                <FormGroup label={t('courseForm.location')} fieldId={`session-${index}-location`}>
+                  <TextInput
+                    id={`session-${index}-location`}
+                    type="text"
+                    value={session.location || ''}
+                    onChange={(_event, value) => handleSessionChange(index, 'location', value)}
+                    placeholder={t('courseForm.locationPlaceholder')}
+                  />
+                </FormGroup>
+
+                <FormGroup label={t('courseForm.instructor')} fieldId={`session-${index}-instructor`}>
+                  <TextInput
+                    id={`session-${index}-instructor`}
                     type="text"
                     value={session.instructor || ''}
-                    onChange={(e) =>
-                      handleSessionChange(index, 'instructor', e.target.value)
-                    }
+                    onChange={(_event, value) => handleSessionChange(index, 'instructor', value)}
                     placeholder={t('courseForm.instructorPlaceholder')}
                   />
-                </div>
+                </FormGroup>
               </div>
-            ))}
+              </CardBody>
+            </Card>
+          ))}
 
-            <button type="button" className="add-session-button" onClick={handleAddSession}>
-              {t('courseForm.addSession')}
-            </button>
-          </div>
-
-          <div className="form-actions">
-            <div>
-              {courseId && (
-                <button type="button" className="delete-button" onClick={handleDelete}>
-                  {t('courseForm.deleteCourse')}
-                </button>
-              )}
-            </div>
-            <div>
-              <button type="button" className="cancel-button" onClick={onClose}>
-                {t('courseForm.cancel')}
-              </button>
-              <button type="submit" className="submit-button">
-                {courseId ? t('courseForm.update') : t('courseForm.add')} {t('courseForm.course')}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+          <Button
+            variant={ButtonVariant.secondary}
+            icon={<PlusCircleIcon />}
+            onClick={handleAddSession}
+            className="pf-v6-u-mt-md"
+          >
+            {t('courseForm.addSession')}
+          </Button>
+        </FormSection>
+      </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="submit" variant={ButtonVariant.primary} onClick={handleSubmit}>
+          {courseId ? t('courseForm.update') : t('courseForm.add')} {t('courseForm.course')}
+        </Button>
+        <Button key="cancel" variant={ButtonVariant.link} onClick={onClose}>
+          {t('courseForm.cancel')}
+        </Button>
+        {courseId && (
+          <Button key="delete" variant={ButtonVariant.danger} onClick={handleDelete} style={{ marginLeft: 'auto' }}>
+            {t('courseForm.deleteCourse')}
+          </Button>
+        )}
+      </ModalFooter>
+    </Modal>
   );
 };
 

@@ -73,8 +73,11 @@ export interface CreateUserRequest {
 }
 
 export interface CreateUserResponse {
+  success: boolean;
   userId: string;
   createdAt: number;
+  sessionToken: string;
+  message?: string;
 }
 
 export interface RegisterUserRequest {
@@ -188,8 +191,9 @@ export interface WSPresenceMessage extends WSMessage {
 export interface Env {
   // Durable Object namespace
   CALENDAR_DO: DurableObjectNamespace;
+  ACTIVATION_TOKEN_DO: DurableObjectNamespace;
 
-  // KV namespace for caching
+  // Legacy KV namespace retained for cleanup of old anonymous cache entries.
   CALENDAR_CACHE: KVNamespace;
 
   // KV namespace for activation tokens

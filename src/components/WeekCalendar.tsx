@@ -82,8 +82,6 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
     return slots;
   }, [startMinutes, endMinutes]);
 
-  const pixelsPerMinute = 80 / 60; // 80px per hour
-
   useEffect(() => {
     const handleClickOutside = () => {
       setContextMenu({ visible: false, x: 0, y: 0, courseId: null });
@@ -128,18 +126,29 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   const getPositionForSession = (startTime: string, endTime: string) => {
     const startMins = timeToMinutes(startTime);
     const endMins = timeToMinutes(endTime);
-    const top = (startMins - startMinutes) * pixelsPerMinute;
-    const height = (endMins - startMins) * pixelsPerMinute;
-    return { top, height };
+    const totalMinutes = endMinutes - startMinutes;
+    const topPercent = ((startMins - startMinutes) / totalMinutes) * 100;
+    const heightPercent = ((endMins - startMins) / totalMinutes) * 100;
+    return { top: topPercent, height: heightPercent };
   };
 
   const getTimeFromY = (y: number): number => {
     const rect = calendarRef.current?.getBoundingClientRect();
     if (!rect) return startMinutes;
 
-    const relativeY = y - rect.top - 50; // 50px for header
-    const minutes = Math.round((relativeY / pixelsPerMinute) / 15) * 15;
-    return Math.max(startMinutes, Math.min(endMinutes, startMinutes + minutes));
+    // Find the calendar-body element to get its bounds
+    const calendarBody = calendarRef.current?.querySelector('.calendar-body');
+    const bodyRect = calendarBody?.getBoundingClientRect();
+    if (!bodyRect) return startMinutes;
+
+    const relativeY = y - bodyRect.top;
+    const bodyHeight = bodyRect.height;
+    const totalMinutes = endMinutes - startMinutes;
+
+    // Calculate percentage and convert to minutes
+    const percent = relativeY / bodyHeight;
+    const minutes = Math.round((startMinutes + (percent * totalMinutes)) / 15) * 15;
+    return Math.max(startMinutes, Math.min(endMinutes, minutes));
   };
 
   const getDayFromX = (x: number): Weekday | null => {
@@ -198,8 +207,8 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
       <div
         className="drag-preview"
         style={{
-          top: `${top}px`,
-          height: `${height}px`,
+          top: `${top}%`,
+          height: `${height}%`,
         }}
       />
     );
@@ -253,8 +262,8 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
                           key={session.id}
                           className="course-block-wrapper"
                           style={{
-                            top: `${top}px`,
-                            height: `${height}px`,
+                            top: `${top}%`,
+                            height: `${height}%`,
                           }}
                         >
                           <CourseBlock

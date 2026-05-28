@@ -155,7 +155,7 @@
     "serverMode": {
       "title": "Share Calendar",
       "calendarLink": "Calendar Link",
-      "calendarLinkDescription": "Share this link with anyone. Registered users will get live updates, anonymous users will see cached data.",
+      "calendarLinkDescription": "Share this link with registered users after granting them access below.",
       "grantAccess": "Grant Access to User",
       "grantAccessDescription": "Give another registered user access to edit this calendar.",
       "userId": "User ID",

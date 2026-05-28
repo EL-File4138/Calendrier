@@ -1,9 +1,19 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Modal,
+  ModalVariant,
+  ModalBody,
+  ModalFooter,
+  Button,
+  ButtonVariant,
+  Form,
+  FormGroup,
+  Radio
+} from '@patternfly/react-core';
 import { useCalendar } from '../context/CalendarContext';
 import type { TimeFormat, WeekStart } from '../types/Course';
 import { AVAILABLE_LANGUAGES } from '../i18n/config';
-import './SettingsModal.css';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -23,95 +33,71 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{t('settings.title')}</h2>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
+    <Modal
+      variant={ModalVariant.small}
+      title={t('settings.title')}
+      isOpen={true}
+      onClose={onClose}
+    >
+      <ModalBody>
+        <Form>
+        <FormGroup label={t('settings.timeFormat')} role="radiogroup" className="pf-v6-u-mb-md">
+          <Radio
+            id="time-format-24h"
+            name="timeFormat"
+            label={t('settings.timeFormat24h')}
+            isChecked={timeFormat === '24h'}
+            onChange={() => setTimeFormat('24h')}
+          />
+          <Radio
+            id="time-format-12h"
+            name="timeFormat"
+            label={t('settings.timeFormat12h')}
+            isChecked={timeFormat === '12h'}
+            onChange={() => setTimeFormat('12h')}
+          />
+        </FormGroup>
 
-        <div className="settings-body">
-          <div className="setting-group">
-            <label className="setting-label">{t('settings.timeFormat')}</label>
-            <div className="setting-options">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="timeFormat"
-                  value="24h"
-                  checked={timeFormat === '24h'}
-                  onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
-                />
-                <span>{t('settings.timeFormat24h')}</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="timeFormat"
-                  value="12h"
-                  checked={timeFormat === '12h'}
-                  onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
-                />
-                <span>{t('settings.timeFormat12h')}</span>
-              </label>
-            </div>
-          </div>
+        <FormGroup label={t('settings.weekStartsOn')} role="radiogroup" className="pf-v6-u-mb-md">
+          <Radio
+            id="week-start-monday"
+            name="weekStart"
+            label={t('settings.monday')}
+            isChecked={weekStart === 'Monday'}
+            onChange={() => setWeekStart('Monday')}
+          />
+          <Radio
+            id="week-start-sunday"
+            name="weekStart"
+            label={t('settings.sunday')}
+            isChecked={weekStart === 'Sunday'}
+            onChange={() => setWeekStart('Sunday')}
+          />
+        </FormGroup>
 
-          <div className="setting-group">
-            <label className="setting-label">{t('settings.weekStartsOn')}</label>
-            <div className="setting-options">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="weekStart"
-                  value="Monday"
-                  checked={weekStart === 'Monday'}
-                  onChange={(e) => setWeekStart(e.target.value as WeekStart)}
-                />
-                <span>{t('settings.monday')}</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="weekStart"
-                  value="Sunday"
-                  checked={weekStart === 'Sunday'}
-                  onChange={(e) => setWeekStart(e.target.value as WeekStart)}
-                />
-                <span>{t('settings.sunday')}</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="setting-group">
-            <label className="setting-label">{t('settings.language')}</label>
-            <div className="setting-options">
-              {AVAILABLE_LANGUAGES.map((lang) => (
-                <label key={lang.code} className="radio-option">
-                  <input
-                    type="radio"
-                    name="language"
-                    value={lang.code}
-                    checked={language === lang.code}
-                    onChange={(e) => setLanguage(e.target.value)}
-                  />
-                  <span>{lang.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-footer">
-          <button className="cancel-button" onClick={onClose}>
-            {t('settings.cancel')}
-          </button>
-          <button className="submit-button" onClick={handleSave}>
-            {t('settings.save')}
-          </button>
-        </div>
-      </div>
-    </div>
+        <FormGroup label={t('settings.language')} role="radiogroup" className="pf-v6-u-mb-md">
+          {AVAILABLE_LANGUAGES.map((lang) => (
+            <Radio
+              key={lang.code}
+              id={`language-${lang.code}`}
+              name="language"
+              label={lang.name}
+              isChecked={language === lang.code}
+              onChange={() => setLanguage(lang.code)}
+            />
+          ))}
+        </FormGroup>
+      </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="save" variant={ButtonVariant.primary} onClick={handleSave}>
+          {t('settings.save')}
+        </Button>
+        <Button key="cancel" variant={ButtonVariant.link} onClick={onClose}>
+          {t('settings.cancel')}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };
 

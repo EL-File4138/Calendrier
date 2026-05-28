@@ -1,6 +1,25 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toPng } from 'html-to-image';
+import {
+  Button,
+  TextInput
+} from '@patternfly/react-core';
+import {
+  PlusIcon,
+  CogIcon,
+  MoonIcon,
+  SunIcon,
+  FolderOpenIcon,
+  FileAltIcon,
+  FileExportIcon,
+  FileImportIcon,
+  ImageIcon,
+  PrintIcon,
+  ShareAltIcon,
+  CloudUploadAltIcon,
+  TrashIcon,
+} from '@patternfly/react-icons';
 import { useCalendar } from '../context/CalendarContext';
 import ConfirmDialog from './ConfirmDialog';
 import ShareDialog from './ShareDialog';
@@ -15,7 +34,7 @@ interface ToolbarProps {
 
 type DialogType = 'new-calendar' | 'import-warning' | 'share' | 'delete-calendar' | null;
 
-const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
+const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const { t } = useTranslation();
   const {
     title,
@@ -43,7 +62,6 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    // Create a safe filename from the title
     const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'calendar';
     a.download = `${safeTitle}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
@@ -70,9 +88,9 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     e.target.value = '';
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (pendingImportRef.current) {
-      importData(pendingImportRef.current);
+      await importData(pendingImportRef.current);
       pendingImportRef.current = null;
     }
     setDialog(null);
@@ -82,22 +100,20 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     setDialog('new-calendar');
   };
 
-  const handleConfirmNewCalendar = () => {
-    newCalendar();
+  const handleConfirmNewCalendar = async () => {
+    await newCalendar();
     setDialog(null);
   };
 
-  const handleSaveBeforeNew = () => {
+  const handleSaveBeforeNew = async () => {
     handleExport();
-    setTimeout(() => {
-      newCalendar();
-      setDialog(null);
-    }, 100);
+    await newCalendar();
+    setDialog(null);
   };
 
   const handleSaveAsImage = async () => {
     const calendarElement = document.querySelector('.week-calendar') as HTMLElement;
-    const toolbarElement = document.querySelector('.toolbar') as HTMLElement;
+    const toolbarElement = document.querySelector('.calendrier-toolbar') as HTMLElement;
 
     if (!calendarElement) {
       alert(t('errors.calendarNotFound'));
@@ -105,18 +121,15 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     }
 
     try {
-      // Temporarily hide toolbar
       if (toolbarElement) {
         toolbarElement.style.display = 'none';
       }
 
-      // Show calendar title for image
       const titleElement = calendarElement.querySelector('.calendar-title') as HTMLElement;
       if (titleElement) {
         titleElement.style.display = 'block';
       }
 
-      // Capture the entire calendar with scrolling content
       const dataUrl = await toPng(calendarElement, {
         quality: 1,
         pixelRatio: 2,
@@ -126,7 +139,6 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
         height: calendarElement.scrollHeight,
       });
 
-      // Restore
       if (toolbarElement) {
         toolbarElement.style.display = '';
       }
@@ -135,7 +147,6 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
       }
 
       const link = document.createElement('a');
-      // Create a safe filename from the title
       const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'calendar';
       link.download = `${safeTitle}-${new Date().toISOString().split('T')[0]}.png`;
       link.href = dataUrl;
@@ -144,7 +155,6 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
       console.error('Failed to save image:', error);
       alert(t('errors.failedToSaveImage'));
 
-      // Restore on error
       if (toolbarElement) {
         toolbarElement.style.display = '';
       }
@@ -211,101 +221,117 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
   return (
     <>
-      <div className="toolbar">
-        <div className="toolbar-section">
-          {isEditingTitle ? (
-            <input
-              type="text"
-              className="title-input"
-              value={tempTitle}
-              onChange={(e) => setTempTitle(e.target.value)}
-              onBlur={handleTitleSave}
-              onKeyDown={handleTitleKeyDown}
-              autoFocus
-            />
-          ) : (
-            <h1 className="app-title" onClick={handleTitleClick} title={t('toolbar.editTitlePlaceholder')}>
-              {title}
-            </h1>
-          )}
+      <header className="calendrier-toolbar" role="banner">
+        <div className="calendrier-toolbar__brand">
+            {isEditingTitle ? (
+              <TextInput
+                className="calendrier-title-input"
+                type="text"
+                value={tempTitle}
+                onChange={(_event, value) => setTempTitle(value)}
+                onBlur={handleTitleSave}
+                onKeyDown={handleTitleKeyDown}
+                aria-label={t('toolbar.editTitlePlaceholder')}
+              />
+            ) : (
+              <h1
+                className="calendrier-title"
+                onClick={handleTitleClick}
+                title={t('toolbar.editTitlePlaceholder')}
+                style={{ cursor: 'pointer', margin: 0 }}
+              >
+                {title}
+              </h1>
+            )}
         </div>
-
-        <div className="toolbar-section toolbar-actions">
-          <button className="toolbar-button primary" onClick={onAddCourse} title={t('toolbar.addCourseTitle')}>
-            ➕ {t('toolbar.addCourse')}
-          </button>
-
-          <ToolbarDropdown
-            label={t('toolbar.file')}
-            icon="📁"
-            items={[
-              {
-                label: t('toolbar.newCalendar'),
-                icon: '📄',
-                onClick: handleNewCalendar,
-              },
-              {
-                label: t('toolbar.export'),
-                icon: '💾',
-                onClick: handleExport,
-              },
-              {
-                label: t('toolbar.import'),
-                icon: '📥',
-                onClick: handleImport,
-              },
-              {
-                label: t('toolbar.saveAsImage'),
-                icon: '🖼️',
-                onClick: handleSaveAsImage,
-              },
-              {
-                label: t('toolbar.print'),
-                icon: '🖨️',
-                onClick: handlePrint,
-              },
-            ]}
-          />
-
-          <ToolbarDropdown
-            label={t('toolbar.shareMenu')}
-            icon="🔗"
-            items={[
-              {
-                label: t('toolbar.share'),
-                icon: '🔗',
-                onClick: () => setDialog('share'),
-              },
-              ...(syncMode === 'local' && userId ? [{
-                label: t('toolbar.saveToServer'),
-                icon: '☁️',
-                onClick: handleSaveToServer,
-              }] : []),
-              ...(syncMode === 'server' && hasWriteAccess ? [{
-                label: t('toolbar.deleteCalendar'),
-                icon: '🗑️',
-                onClick: handleDeleteCalendar,
-              }] : []),
-            ]}
-          />
-
-          <button className="toolbar-button btn-settings" onClick={onOpenSettings} title={t('toolbar.settingsTitle')}>
-            ⚙️
-          </button>
-          <button className="toolbar-button btn-darkmode" onClick={toggleDarkMode} title={t('toolbar.darkModeTitle')}>
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-          <UserPanel />
+        <div className="calendrier-toolbar__actions">
+          <div className="calendrier-toolbar__primary-actions">
+                  <Button
+                    variant="primary"
+                    icon={<PlusIcon />}
+                    onClick={onAddCourse}
+                    aria-label={t('toolbar.addCourseTitle')}
+                  >
+                    {t('toolbar.addCourse')}
+                  </Button>
+                  <ToolbarDropdown
+                    label={t('toolbar.file')}
+                    icon={<FolderOpenIcon />}
+                    items={[
+                      {
+                        label: t('toolbar.newCalendar'),
+                        icon: <FileAltIcon />,
+                        onClick: handleNewCalendar,
+                      },
+                      {
+                        label: t('toolbar.export'),
+                        icon: <FileExportIcon />,
+                        onClick: handleExport,
+                      },
+                      {
+                        label: t('toolbar.import'),
+                        icon: <FileImportIcon />,
+                        onClick: handleImport,
+                      },
+                      {
+                        label: t('toolbar.saveAsImage'),
+                        icon: <ImageIcon />,
+                        onClick: handleSaveAsImage,
+                      },
+                      {
+                        label: t('toolbar.print'),
+                        icon: <PrintIcon />,
+                        onClick: handlePrint,
+                      },
+                    ]}
+                  />
+                  <ToolbarDropdown
+                    label={t('toolbar.shareMenu')}
+                    icon={<ShareAltIcon />}
+                    items={[
+                      {
+                        label: t('toolbar.share'),
+                        icon: <ShareAltIcon />,
+                        onClick: () => setDialog('share'),
+                      },
+                      ...(syncMode === 'local' && userId ? [{
+                        label: t('toolbar.saveToServer'),
+                        icon: <CloudUploadAltIcon />,
+                        onClick: handleSaveToServer,
+                      }] : []),
+                      ...(syncMode === 'server' && hasWriteAccess ? [{
+                        label: t('toolbar.deleteCalendar'),
+                        icon: <TrashIcon />,
+                        onClick: handleDeleteCalendar,
+                      }] : []),
+                    ]}
+                  />
+          </div>
+          <div className="calendrier-toolbar__utility-actions">
+                  <Button
+                    variant="plain"
+                    icon={<CogIcon />}
+                    onClick={onOpenSettings}
+                    aria-label={t('toolbar.settingsTitle')}
+                  />
+                  <Button
+                    variant="plain"
+                    icon={darkMode ? <SunIcon /> : <MoonIcon />}
+                    onClick={toggleDarkMode}
+                    aria-label={t('toolbar.darkModeTitle')}
+                  />
+                  <UserPanel />
+          </div>
         </div>
+      </header>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
 
       {dialog === 'new-calendar' && (
         <ConfirmDialog
@@ -353,4 +379,4 @@ const Toolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   );
 };
 
-export default Toolbar;
+export default CalendrierToolbar;

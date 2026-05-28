@@ -1,351 +1,113 @@
-.share-dialog {
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
+.share-dialog-form {
+  display: grid;
+  gap: 0;
 }
 
-.share-section {
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #eee;
+.share-dialog-section {
+  display: grid;
+  gap: var(--pf-t--global--spacer--md);
 }
 
-.share-section:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.share-section h3 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.help-text {
-  margin: 8px 0 0 0;
-  font-size: 13px;
-  color: #666;
-}
-
-.calendar-id-display {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-}
-
-.help-text code {
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 12px;
-}
-
-.info-box {
-  margin-top: 20px;
-  padding: 16px;
-  background: #e3f2fd;
-  border-left: 4px solid #2196f3;
-  border-radius: 4px;
-}
-
-.info-box p {
+.share-dialog-section__description {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #1565c0;
+  color: var(--pf-t--global--text--color--subtle);
+  line-height: 1.45;
 }
 
-.share-body {
-  padding: 24px;
+.share-dialog-grant-form {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(10rem, 14rem) auto;
+  align-items: end;
+  gap: var(--pf-t--global--spacer--md);
 }
 
-.share-description {
-  margin: 0 0 20px 0;
-  line-height: 1.6;
-  color: #555;
-  font-size: 14px;
-}
-
-.generate-button {
-  width: 100%;
-  padding: 12px;
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: background 0.2s;
-}
-
-.generate-button:hover {
-  background: #218838;
-}
-
-.share-result {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #eee;
-}
-
-.share-result label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #333;
-}
-
-.share-url-container {
+.share-dialog-copy-row {
   display: flex;
-  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
 }
 
-.share-url-input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 13px;
-  background: #f8f9fa;
-  font-family: monospace;
+.share-dialog-copy-label {
+  flex: 0 0 auto;
+  font-weight: var(--pf-t--global--font--weight--body--bold);
 }
 
-.copy-button {
-  padding: 10px 16px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
+.share-dialog-inline-copy {
+  min-width: 0;
+  max-width: 100%;
 }
 
-.copy-button:hover {
-  background: #0056b3;
+.share-dialog-inline-copy .pf-v6-c-clipboard-copy__text {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
-.share-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 16px 24px;
-  border-top: 1px solid #eee;
+.share-dialog-access-list {
+  display: grid;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
-/* Dark mode styles */
-html.dark-mode .modal-overlay {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-html.dark-mode .modal-content {
-  background: #1e1e1e;
-  color: #e0e0e0;
-}
-
-html.dark-mode .modal-header {
-  border-bottom-color: #444;
-}
-
-html.dark-mode .modal-header h2 {
-  color: #e0e0e0;
-}
-
-html.dark-mode .close-button {
-  color: #999;
-}
-
-html.dark-mode .close-button:hover {
-  color: #e0e0e0;
-}
-
-html.dark-mode .share-description {
-  color: #ccc;
-}
-
-html.dark-mode .share-result {
-  border-top-color: #444;
-}
-
-html.dark-mode .share-result label {
-  color: #e0e0e0;
-}
-
-html.dark-mode .share-url-input {
-  background: #2a2a2a;
-  color: #e0e0e0;
-  border-color: #444;
-}
-
-html.dark-mode .share-footer {
-  border-top-color: #444;
-}
-
-html.dark-mode .share-section {
-  border-bottom-color: #444;
-}
-
-html.dark-mode .share-section h3 {
-  color: #e0e0e0;
-}
-
-html.dark-mode .help-text {
-  color: #999;
-}
-
-html.dark-mode .help-text code {
-  background: #2a2a2a;
-  color: #e0e0e0;
-}
-
-html.dark-mode .calendar-id-display {
-  border-top-color: #444;
-}
-
-html.dark-mode .info-box {
-  background: #1a3a52;
-  border-left-color: #2196f3;
-}
-
-html.dark-mode .info-box p {
-  color: #90caf9;
-}
-
-html.dark-mode .generate-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Privileges List Styles */
-.privileges-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-  margin-top: 16px;
-}
-
-.privilege-item {
-  display: flex;
-  justify-content: space-between;
+.share-dialog-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  gap: var(--pf-t--global--spacer--md);
+  padding-block: var(--pf-t--global--spacer--md);
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
 }
 
-.privilege-info {
-  flex: 1;
+.share-dialog-access-row:first-child {
+  border-block-start: 0;
+  padding-block-start: 0;
+}
+
+.share-dialog-user-cell {
+  min-width: 0;
+}
+
+.share-dialog-section .pf-v6-c-clipboard-copy {
+  max-width: 100%;
+}
+
+.share-dialog-section .pf-v6-c-clipboard-copy__group,
+.share-dialog-section .pf-v6-c-clipboard-copy__text {
+  min-width: 0;
+}
+
+.share-dialog-section .pf-v6-c-clipboard-copy__text {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.share-dialog-user-meta {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
-.privilege-user-id,
-.privilege-level {
-  font-size: 14px;
-  color: #333;
+@media (max-width: 768px) {
+  .share-dialog-section {
+    padding: 0;
+  }
+
+  .share-dialog-grant-form,
+  .share-dialog-access-row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-dialog-access-row .pf-v6-c-button {
+    justify-self: start;
+  }
 }
 
-.privilege-user-id code {
-  font-family: monospace;
-  background: #e9ecef;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.badge-owner {
-  background-color: #ff6b6b;
-  color: white;
-}
-
-.badge-write {
-  background-color: #51cf66;
-  color: white;
-}
-
-.badge-read {
-  background-color: #748ffc;
-  color: white;
-}
-
-.badge-self {
-  background-color: #4dabf7;
-  color: white;
-  margin-left: 8px;
-}
-
-.revoke-button {
-  padding: 8px 16px;
-  background-color: #ff6b6b;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.revoke-button:hover {
-  background-color: #fa5252;
-}
-
-.revoke-button:active {
-  background-color: #f03e3e;
-}
-
-.leave-button {
-  padding: 8px 16px;
-  background-color: #ff922b;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.leave-button:hover {
-  background-color: #fd7e14;
-}
-
-.leave-button:active {
-  background-color: #e8590c;
-}
-
-/* Dark mode privileges */
-html.dark-mode .privilege-item {
-  background: #2a2a2a;
+html.dark-mode .share-dialog-section {
   border-color: #444;
 }
 
-html.dark-mode .privilege-user-id,
-html.dark-mode .privilege-level {
-  color: #e0e0e0;
-}
-
-html.dark-mode .privilege-user-id code {
-  background: #1a1a1a;
-  color: #e0e0e0;
+html.dark-mode .share-dialog-section__description {
+  color: #b0b0b0;
 }

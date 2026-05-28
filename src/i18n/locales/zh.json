@@ -155,7 +155,7 @@
     "serverMode": {
       "title": "分享日历",
       "calendarLink": "日历链接",
-      "calendarLinkDescription": "与任何人分享此链接。注册用户将获得实时更新，匿名用户将看到缓存数据。",
+      "calendarLinkDescription": "在下方授予访问权限后，将此链接分享给已注册用户。",
       "grantAccess": "授予用户访问权限",
       "grantAccessDescription": "授予另一个注册用户编辑此日历的权限。",
       "userId": "用户 ID",

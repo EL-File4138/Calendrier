@@ -5,6 +5,7 @@ import type {
   WriteCalendarResponse,
   GrantPrivilegeResponse,
   Privilege,
+  CreateUserResponse,
 } from './types';
 
 // Configure your Worker URL here
@@ -21,12 +22,7 @@ export class CalendarAPI {
   /**
    * Create a new user with activation token (registered immediately)
    */
-  async createUser(activationToken: string, displayName?: string): Promise<{
-    success: boolean;
-    userId?: string;
-    createdAt?: number;
-    message?: string;
-  }> {
+  async createUser(activationToken: string, displayName?: string): Promise<CreateUserResponse> {
     const response = await fetch(`${this.workerUrl}/api/user/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,13 +37,27 @@ export class CalendarAPI {
     return response.json();
   }
 
+  async logout(userId: string, sessionToken: string): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.workerUrl}/api/user/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ userId }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to log out: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   /**
    * Create a new calendar
    */
-  async createCalendar(userId: string, data: CalendarData): Promise<CreateCalendarResponse> {
+  async createCalendar(userId: string, sessionToken: string, data: CalendarData): Promise<CreateCalendarResponse> {
     const response = await fetch(`${this.workerUrl}/api/calendar/create`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ userId, data }),
     });
 
@@ -61,7 +71,7 @@ export class CalendarAPI {
   /**
    * Read a calendar (authenticated or anonymous)
    */
-  async readCalendar(calendarId: string, userId?: string): Promise<ReadCalendarResponse> {
+  async readCalendar(calendarId: string, userId?: string, sessionToken?: string): Promise<ReadCalendarResponse> {
     const params = new URLSearchParams({ calendarId });
     if (userId) {
       params.append('userId', userId);
@@ -69,7 +79,9 @@ export class CalendarAPI {
 
     const response = await fetch(`${this.workerUrl}/api/calendar/read?${params.toString()}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: sessionToken
+        ? { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` }
+        : { 'Content-Type': 'application/json' },
     });
 
     if (!response.ok) {
@@ -85,12 +97,13 @@ export class CalendarAPI {
   async writeCalendar(
     calendarId: string,
     userId: string,
+    sessionToken: string,
     data: CalendarData,
     version: number
   ): Promise<WriteCalendarResponse> {
     const response = await fetch(`${this.workerUrl}/api/calendar/write`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ calendarId, userId, data, version }),
     });
 
@@ -107,12 +120,13 @@ export class CalendarAPI {
   async grantPrivilege(
     calendarId: string,
     granterId: string,
+    sessionToken: string,
     targetUserId: string,
     level: 'owner' | 'write' | 'read'
   ): Promise<GrantPrivilegeResponse> {
     const response = await fetch(`${this.workerUrl}/api/privilege/grant`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ calendarId, granterId, targetUserId, level }),
     });
 
@@ -129,11 +143,12 @@ export class CalendarAPI {
   async revokePrivilege(
     calendarId: string,
     granterId: string,
+    sessionToken: string,
     targetUserId: string
   ): Promise<GrantPrivilegeResponse> {
     const response = await fetch(`${this.workerUrl}/api/privilege/revoke`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ calendarId, granterId, targetUserId }),
     });
 
@@ -149,11 +164,12 @@ export class CalendarAPI {
    */
   async listPrivileges(
     calendarId: string,
-    requesterId: string
+    requesterId: string,
+    sessionToken: string
   ): Promise<{ success: boolean; privileges?: Privilege[]; message?: string }> {
     const response = await fetch(`${this.workerUrl}/api/privilege/list`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ calendarId, requesterId }),
     });
 
@@ -172,11 +188,12 @@ export class CalendarAPI {
    */
   async deleteCalendar(
     calendarId: string,
-    requesterId: string
+    requesterId: string,
+    sessionToken: string
   ): Promise<{ success: boolean; message?: string }> {
     const response = await fetch(`${this.workerUrl}/api/calendar/delete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ calendarId, requesterId }),
     });
 
@@ -190,9 +207,13 @@ export class CalendarAPI {
   /**
    * Connect to WebSocket for real-time updates
    */
-  connectWebSocket(calendarId: string, userId: string): WebSocket {
+  connectWebSocket(calendarId: string, userId: string, sessionToken: string): WebSocket {
     const wsUrl = this.workerUrl.replace(/^http/, 'ws');
-    const ws = new WebSocket(`${wsUrl}/api/calendar/${calendarId}/ws?userId=${userId}`);
+    const params = new URLSearchParams({ userId });
+    const ws = new WebSocket(
+      `${wsUrl}/api/calendar/${calendarId}/ws?${params.toString()}`,
+      `calendrier-session.${sessionToken}`
+    );
     return ws;
   }
 }

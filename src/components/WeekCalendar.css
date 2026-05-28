@@ -26,7 +26,12 @@ html.dark-mode .calendar-title {
 
 .calendar-grid {
   min-width: 900px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   position: relative;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
 }
 
 /* Dark mode styles */
@@ -162,13 +167,18 @@ html.dark-mode .context-menu button:hover {
 
 .calendar-body {
   display: flex;
+  flex: 1;
   position: relative;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .time-labels {
   width: 80px;
   flex-shrink: 0;
   border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
   position: relative;
 }
 
@@ -180,16 +190,21 @@ html.dark-mode .context-menu button:hover {
   color: #666;
   border-bottom: 1px solid #eee;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 60px;
 }
 
 .days-grid {
   display: flex;
   flex: 1;
   position: relative;
+  min-height: 100%;
 }
 
 .day-column {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   position: relative;
   border-right: 1px solid #ddd;
   cursor: crosshair;
@@ -202,6 +217,8 @@ html.dark-mode .context-menu button:hover {
 .time-slot {
   border-bottom: 1px solid #eee;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 60px;
 }
 
 .course-block-wrapper {

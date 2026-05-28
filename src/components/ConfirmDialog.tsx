@@ -1,4 +1,4 @@
-import './ConfirmDialog.css';
+import { Modal, ModalVariant, Button, ButtonVariant, ModalBody, ModalFooter } from '@patternfly/react-core';
 
 interface ConfirmDialogProps {
   title: string;
@@ -24,31 +24,29 @@ const ConfirmDialog = ({
   onSecondaryAction,
 }: ConfirmDialogProps) => {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content confirm-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{title}</h2>
-        </div>
-
-        <div className="confirm-body">
-          <p>{message}</p>
-        </div>
-
-        <div className="confirm-footer">
-          <button className="cancel-button" onClick={onCancel}>
-            {cancelText}
-          </button>
-          {showSecondaryAction && onSecondaryAction && (
-            <button className="secondary-button" onClick={onSecondaryAction}>
-              {secondaryActionText}
-            </button>
-          )}
-          <button className="submit-button" onClick={onConfirm}>
-            {confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      variant={ModalVariant.small}
+      title={title}
+      isOpen={true}
+      onClose={onCancel}
+    >
+      <ModalBody>
+        <p>{message}</p>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="confirm" variant={ButtonVariant.primary} onClick={onConfirm}>
+          {confirmText}
+        </Button>
+        {showSecondaryAction && onSecondaryAction && (
+          <Button key="secondary" variant={ButtonVariant.secondary} onClick={onSecondaryAction}>
+            {secondaryActionText}
+          </Button>
+        )}
+        <Button key="cancel" variant={ButtonVariant.link} onClick={onCancel}>
+          {cancelText}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };
 

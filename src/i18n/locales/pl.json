@@ -155,7 +155,7 @@
     "serverMode": {
       "title": "Udostępnij kalendarz",
       "calendarLink": "Link do kalendarza",
-      "calendarLinkDescription": "Udostępnij ten link każdemu. Zarejestrowani użytkownicy otrzymają aktualizacje na żywo, anonimowi użytkownicy zobaczą dane z pamięci podręcznej.",
+      "calendarLinkDescription": "Udostępnij ten link zarejestrowanym użytkownikom po przyznaniu im dostępu poniżej.",
       "grantAccess": "Przyznaj dostęp użytkownikowi",
       "grantAccessDescription": "Daj innemu zarejestrowanemu użytkownikowi dostęp do edycji tego kalendarza.",
       "userId": "ID użytkownika",

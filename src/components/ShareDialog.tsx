@@ -1,5 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Modal,
+  ModalVariant,
+  ModalBody,
+  ModalFooter,
+  Button,
+  ButtonVariant,
+  Divider,
+  Form,
+  FormGroup,
+  TextInput,
+  FormSection,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  Spinner,
+  Label,
+  ClipboardCopy,
+} from '@patternfly/react-core';
 import { useCalendar } from '../context/CalendarContext';
 import { CopyableId } from './CopyableId';
 import './ShareDialog.css';
@@ -15,7 +34,6 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
   // Legacy URL-based sharing
   const [url, setUrl] = useState('');
   const [shareUrl, setShareUrl] = useState('');
-  const [copied, setCopied] = useState(false);
 
   // Server-based sharing
   const [targetUserId, setTargetUserId] = useState('');
@@ -69,17 +87,9 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       // Generate share URL
       const generatedUrl = `${currentOrigin}${basePath}/?import=${base64Url}`;
       setShareUrl(generatedUrl);
-      setCopied(false);
     } catch {
       alert(t('share.invalidFormat'));
     }
-  };
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   };
 
   const handleGrantAccess = async () => {
@@ -94,7 +104,6 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       if (success) {
         alert(t('shareDialog.serverMode.grantSuccess', { userId: targetUserId.substring(0, 8) }));
         setTargetUserId('');
-        // Reload privileges list
         await loadPrivileges();
       } else {
         alert(t('shareDialog.serverMode.grantFailed'));
@@ -118,18 +127,17 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
     }
 
     try {
-      const success = await revokeAccess(targetUserId);
-      if (success) {
+      const result = await revokeAccess(targetUserId);
+      if (result.success) {
         if (isSelfRevoke) {
           alert(t('shareDialog.serverMode.leaveSuccess'));
-          onClose(); // Close the dialog after self-revoke
+          onClose();
         } else {
           alert(t('shareDialog.serverMode.revokeSuccess'));
-          // Reload privileges list
           await loadPrivileges();
         }
       } else {
-        alert(t('shareDialog.serverMode.revokeFailed'));
+        alert(result.message || t('shareDialog.serverMode.revokeFailed'));
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -146,176 +154,173 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content share-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{syncMode === 'server' ? t('shareDialog.serverMode.title') : t('share.title')}</h2>
-          <button className="close-button" onClick={onClose}>
-            &times;
-          </button>
-        </div>
+    <Modal
+      variant={ModalVariant.large}
+      title={syncMode === 'server' ? t('shareDialog.serverMode.title') : t('share.title')}
+      isOpen={true}
+      onClose={onClose}
+    >
+      <ModalBody>
+        {syncMode === 'server' && calendarId ? (
+        <Form className="share-dialog-form">
+          {/* Server-based sharing */}
+          <FormSection title={t('shareDialog.serverMode.calendarLink')} className="share-dialog-section">
+            <p className="share-dialog-section__description">
+              {t('shareDialog.serverMode.calendarLinkDescription')}
+            </p>
+            <div className="share-dialog-copy-row">
+              <span className="share-dialog-copy-label">{t('shareDialog.serverMode.calendarLink')}</span>
+              <ClipboardCopy
+                isReadOnly
+                isCode
+                variant="inline-compact"
+                hoverTip={t('share.copy')}
+                clickTip={t('share.copied')}
+                className="share-dialog-inline-copy"
+              >
+                {getCalendarShareUrl()}
+              </ClipboardCopy>
+            </div>
+            <div className="share-dialog-copy-row">
+              <CopyableId id={calendarId} label="Calendar ID:" displayLength={0} />
+            </div>
+          </FormSection>
 
-        <div className="share-body">
-          {syncMode === 'server' && calendarId ? (
-            <>
-              {/* Server-based sharing */}
-              <div className="share-section">
-                <h3>{t('shareDialog.serverMode.calendarLink')}</h3>
-                <p className="share-description">
-                  {t('shareDialog.serverMode.calendarLinkDescription')}
-                </p>
-                <div className="share-url-container">
-                  <input
-                    type="text"
-                    value={getCalendarShareUrl()}
-                    readOnly
-                    className="share-url-input"
-                  />
-                  <button className="copy-button" onClick={() => handleCopy(getCalendarShareUrl())}>
-                    {copied ? '✓ Copied' : '📋 Copy'}
-                  </button>
-                </div>
-                <div className="calendar-id-display">
-                  <CopyableId id={calendarId} label="Calendar ID:" displayLength={16} />
-                </div>
-              </div>
+          <Divider className="pf-v6-u-my-md" />
 
-              <div className="share-section">
-                <h3>{t('shareDialog.serverMode.grantAccess')}</h3>
-                <p className="share-description">
-                  {t('shareDialog.serverMode.grantAccessDescription')}
-                </p>
-                <div className="form-group">
-                  <label htmlFor="target-user-id">{t('shareDialog.serverMode.userId')}</label>
-                  <input
-                    id="target-user-id"
-                    type="text"
-                    placeholder={t('shareDialog.serverMode.userIdPlaceholder')}
-                    value={targetUserId}
-                    onChange={(e) => setTargetUserId(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="privilege-level">{t('shareDialog.serverMode.accessLevel')}</label>
-                  <select
-                    id="privilege-level"
-                    value={privilegeLevel}
-                    onChange={(e) => setPrivilegeLevel(e.target.value as 'read' | 'write' | 'owner')}
-                  >
-                    <option value="read">{t('shareDialog.serverMode.accessLevelRead')}</option>
-                    <option value="write">{t('shareDialog.serverMode.accessLevelWrite')}</option>
-                    <option value="owner">{t('shareDialog.serverMode.accessLevelOwner')}</option>
-                  </select>
-                </div>
-                <button
-                  className="generate-button"
-                  onClick={handleGrantAccess}
-                  disabled={isGranting || !targetUserId.trim()}
-                >
-                  {isGranting ? t('shareDialog.serverMode.granting') : t('shareDialog.serverMode.grantButton')}
-                </button>
-              </div>
-
-              <div className="share-section">
-                <h3>{t('shareDialog.serverMode.currentAccess')}</h3>
-                <p className="share-description">
-                  {t('shareDialog.serverMode.currentAccessDescription')}
-                </p>
-                {isLoadingPrivileges ? (
-                  <p>{t('shareDialog.serverMode.loading')}</p>
-                ) : privileges.length === 0 ? (
-                  <p className="help-text">{t('shareDialog.serverMode.noAccess')}</p>
-                ) : (
-                  <div className="privileges-list">
-                    {privileges.map((priv) => (
-                      <div key={priv.userId} className="privilege-item">
-                        <div className="privilege-info">
-                          <div className="privilege-user-id">
-                            <CopyableId id={priv.userId} label="User:" displayLength={16} />
-                            {priv.userId === userId && (
-                              <span className="badge badge-self">{t('shareDialog.serverMode.selfBadge')}</span>
-                            )}
-                          </div>
-                          <div className="privilege-level">
-                            <strong>{t('shareDialog.serverMode.accessLabel')}</strong> <span className={`badge badge-${priv.level}`}>{priv.level}</span>
-                          </div>
-                        </div>
-                        <button
-                          className={priv.userId === userId ? "leave-button" : "revoke-button"}
-                          onClick={() => handleRevokeAccess(priv.userId)}
-                        >
-                          {priv.userId === userId ? t('shareDialog.serverMode.leaveButton') : t('shareDialog.serverMode.revokeButton')}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Legacy URL-based sharing */}
-              <p className="share-description">
-                {t('share.description')}
-              </p>
-
-              <div className="form-group">
-                <label htmlFor="calendar-url">
-                  {t('share.calendarUrl')} <span className="required">*</span>
-                </label>
-                <input
-                  id="calendar-url"
+          <FormSection title={t('shareDialog.serverMode.grantAccess')} className="share-dialog-section">
+            <p className="share-dialog-section__description">
+              {t('shareDialog.serverMode.grantAccessDescription')}
+            </p>
+            <div className="share-dialog-grant-form">
+              <FormGroup label={t('shareDialog.serverMode.userId')} isRequired fieldId="target-user-id">
+                <TextInput
+                  id="target-user-id"
                   type="text"
-                  placeholder={t('share.urlPlaceholder')}
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleGenerateLegacy();
-                    }
-                  }}
+                  placeholder={t('shareDialog.serverMode.userIdPlaceholder')}
+                  value={targetUserId}
+                  onChange={(_event, value) => setTargetUserId(value)}
                 />
+              </FormGroup>
+              <FormGroup label={t('shareDialog.serverMode.accessLevel')} fieldId="privilege-level">
+                <FormSelect
+                  id="privilege-level"
+                  value={privilegeLevel}
+                  onChange={(_event, value) => setPrivilegeLevel(value as 'read' | 'write' | 'owner')}
+                >
+                  <FormSelectOption value="read" label={t('shareDialog.serverMode.accessLevelRead')} />
+                  <FormSelectOption value="write" label={t('shareDialog.serverMode.accessLevelWrite')} />
+                  <FormSelectOption value="owner" label={t('shareDialog.serverMode.accessLevelOwner')} />
+                </FormSelect>
+              </FormGroup>
+              <Button
+                variant={ButtonVariant.primary}
+                onClick={handleGrantAccess}
+                isDisabled={isGranting || !targetUserId.trim()}
+                isLoading={isGranting}
+              >
+                {isGranting ? t('shareDialog.serverMode.granting') : t('shareDialog.serverMode.grantButton')}
+              </Button>
+            </div>
+          </FormSection>
+
+          <Divider className="pf-v6-u-my-md" />
+
+          <FormSection title={t('shareDialog.serverMode.currentAccess')} className="share-dialog-section">
+            <p className="share-dialog-section__description">
+              {t('shareDialog.serverMode.currentAccessDescription')}
+            </p>
+            {isLoadingPrivileges ? (
+              <div className="pf-v6-u-display-flex pf-v6-u-align-items-center">
+                <Spinner size="md" className="pf-v6-u-mr-sm" />
+                <span>{t('shareDialog.serverMode.loading')}</span>
               </div>
-
-              <button className="generate-button" onClick={handleGenerateLegacy}>
-                {t('share.generate')}
-              </button>
-
-              {shareUrl && (
-                <div className="share-result">
-                  <label>{t('share.shareLink')}</label>
-                  <div className="share-url-container">
-                    <input
-                      type="text"
-                      value={shareUrl}
-                      readOnly
-                      className="share-url-input"
-                    />
-                    <button className="copy-button" onClick={() => handleCopy(shareUrl)}>
-                      {copied ? `✓ ${t('share.copied')}` : `📋 ${t('share.copy')}`}
-                    </button>
+            ) : privileges.length === 0 ? (
+              <Alert variant="info" isInline title={t('shareDialog.serverMode.noAccess')} />
+            ) : (
+              <div className="share-dialog-access-list">
+                {privileges.map((priv) => (
+                  <div key={priv.userId} className="share-dialog-access-row">
+                    <div className="share-dialog-user-cell">
+                      <CopyableId id={priv.userId} label="User" displayLength={0} />
+                      <div className="share-dialog-user-meta">
+                        {priv.userId === userId && (
+                          <Label color="blue">{t('shareDialog.serverMode.selfBadge')}</Label>
+                        )}
+                      </div>
+                    </div>
+                    <Label color={priv.level === 'owner' ? 'purple' : priv.level === 'write' ? 'green' : 'grey'}>
+                      {priv.level}
+                    </Label>
+                    <Button
+                      variant={priv.userId === userId ? ButtonVariant.secondary : ButtonVariant.danger}
+                      isDanger={priv.userId !== userId}
+                      onClick={() => handleRevokeAccess(priv.userId)}
+                    >
+                      {priv.userId === userId ? t('shareDialog.serverMode.leaveButton') : t('shareDialog.serverMode.revokeButton')}
+                    </Button>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+            )}
+          </FormSection>
+        </Form>
+      ) : (
+        <>
+          {/* Legacy URL-based sharing */}
+          <p className="pf-v6-u-mb-md pf-v6-u-color-200">
+            {t('share.description')}
+          </p>
 
-              {!userId && (
-                <div className="info-box">
-                  <p>
-                    💡 <strong>{t('shareDialog.tip.title')}</strong> {t('shareDialog.tip.message')}
-                  </p>
-                </div>
-              )}
-            </>
+          <Form>
+            <FormGroup
+              label={t('share.calendarUrl')}
+              isRequired
+              fieldId="calendar-url"
+            >
+              <TextInput
+                id="calendar-url"
+                type="text"
+                placeholder={t('share.urlPlaceholder')}
+                value={url}
+                onChange={(_event, value) => setUrl(value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleGenerateLegacy();
+                  }
+                }}
+              />
+            </FormGroup>
+
+            <Button variant={ButtonVariant.primary} onClick={handleGenerateLegacy}>
+              {t('share.generate')}
+            </Button>
+          </Form>
+
+          {shareUrl && (
+            <div className="pf-v6-u-mt-md">
+              <FormGroup label={t('share.shareLink')} fieldId="share-link">
+                <ClipboardCopy isReadOnly hoverTip={t('share.copy')} clickTip={t('share.copied')}>
+                  {shareUrl}
+                </ClipboardCopy>
+              </FormGroup>
+            </div>
           )}
-        </div>
 
-        <div className="share-footer">
-          <button className="cancel-button" onClick={onClose}>
-            {t('share.close')}
-          </button>
-        </div>
-      </div>
-    </div>
+          {!userId && (
+            <Alert variant="info" isInline title={t('shareDialog.tip.title')} className="pf-v6-u-mt-md">
+              {t('shareDialog.tip.message')}
+            </Alert>
+          )}
+        </>
+      )}
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant={ButtonVariant.link} onClick={onClose}>
+          {t('share.close')}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };
 

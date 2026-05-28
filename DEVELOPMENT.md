@@ -145,19 +145,13 @@ Create a new calendar document.
 
 ---
 
-#### POST /api/calendar/read
+#### GET /api/calendar/read?calendarId={id}&userId={userId}
 
 Read calendar data.
 
-**Authentication:** Optional (anonymous readers get cached data).
+**Authentication:** Requires `Authorization: Bearer <sessionToken>` and read access.
 
-**Request:**
-```json
-{
-  "calendarId": "calendar-uuid",
-  "userId": "user-uuid"
-}
-```
+Pass `calendarId` and optional `userId` as query parameters.
 
 **Response:**
 ```json
@@ -173,13 +167,8 @@ Read calendar data.
 }
 ```
 
-**Anonymous readers:**
-- Get cached data from KV (5-minute TTL)
-- `hasWriteAccess` is always false
-- No real-time updates
-
 **Registered readers:**
-- Get live data from Durable Object
+- Get live data from Durable Object when the user has read access.
 - `hasWriteAccess` depends on privilege level
 - Can establish WebSocket connection
 
@@ -190,6 +179,8 @@ Read calendar data.
 Write calendar data with optimistic locking.
 
 **Authentication:** Requires write access.
+
+Send `Authorization: Bearer <sessionToken>`.
 
 **Request:**
 ```json
@@ -221,52 +212,19 @@ Write calendar data with optimistic locking.
 
 ---
 
-#### POST /api/calendar/list
-
-List all calendars for a user.
-
-**Authentication:** Requires registered user.
-
-**Request:**
-```json
-{
-  "userId": "user-uuid"
-}
-```
-
-**Response:**
-```json
-{
-  "calendars": [
-    {
-      "id": "calendar-uuid",
-      "title": "My Calendar",
-      "privilegeLevel": "owner",
-      "updatedAt": 1234567890
-    },
-    {
-      "id": "another-uuid",
-      "title": "Shared Calendar",
-      "privilegeLevel": "write",
-      "updatedAt": 1234567890
-    }
-  ]
-}
-```
-
----
-
 #### POST /api/calendar/delete
 
 Delete a calendar (owner only).
 
 **Authentication:** Requires owner privilege.
 
+Send `Authorization: Bearer <sessionToken>`.
+
 **Request:**
 ```json
 {
   "calendarId": "calendar-uuid",
-  "userId": "user-uuid"
+  "requesterId": "user-uuid"
 }
 ```
 
@@ -297,6 +255,8 @@ Delete a calendar (owner only).
 Grant access to another user.
 
 **Authentication:** Requires owner privilege.
+
+Send `Authorization: Bearer <sessionToken>`.
 
 **Request:**
 ```json
@@ -332,6 +292,8 @@ Grant access to another user.
 Revoke access from a user.
 
 **Authentication:** Requires owner privilege OR user revoking their own access.
+
+Send `Authorization: Bearer <sessionToken>`.
 
 **Request:**
 ```json
@@ -562,11 +524,9 @@ This ensures sequential execution of operations, preventing race conditions.
 ### KV Namespaces
 
 **CALENDAR_CACHE:**
-- Stores cached calendar data
+- Legacy namespace retained for cleanup of old cached calendar data
 - Key format: `calendar:{calendarId}`
-- TTL: 5 minutes
-- Updated after each write
-- Used for anonymous readers
+- New writes delete this key; authenticated live reads use Durable Objects directly.
 
 **ACTIVATION_TOKENS:**
 - Stores activation tokens

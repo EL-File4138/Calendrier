@@ -14,6 +14,29 @@ import {
   Env,
 } from './types';
 
+interface InitializeRequest {
+  calendarId: string;
+  ownerId: string;
+  data: CalendarData;
+}
+
+interface ReadRequest {
+  userId?: string;
+}
+
+interface RevokeRequest {
+  granterId: string;
+  targetUserId: string;
+}
+
+interface ListPrivilegesRequest {
+  requesterId: string;
+}
+
+interface DestroyRequest {
+  requesterId: string;
+}
+
 /**
  * CalendarDO - Durable Object for managing a single calendar document
  *
@@ -28,7 +51,7 @@ export class CalendarDO {
   private env: Env;
   private document: CalendarDocument | null = null;
   private sessions: Set<WebSocket> = new Set();
-  private operationQueue: Promise<unknown> = Promise.resolve();
+  private operationQueue: Promise<void> = Promise.resolve();
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -48,22 +71,17 @@ export class CalendarDO {
    */
   private async withMutex<T>(operation: () => Promise<T>): Promise<T> {
     const previousOperation = this.operationQueue;
-    let resolver: (value: T) => void;
-    let rejecter: (error: unknown) => void;
+    let release!: () => void;
 
-    this.operationQueue = new Promise((resolve, reject) => {
-      resolver = resolve;
-      rejecter = reject;
+    this.operationQueue = new Promise((resolve) => {
+      release = resolve;
     });
 
     try {
       await previousOperation;
-      const result = await operation();
-      resolver!(result);
-      return result;
-    } catch (error) {
-      rejecter!(error);
-      throw error;
+      return await operation();
+    } finally {
+      release();
     }
   }
 
@@ -111,9 +129,7 @@ export class CalendarDO {
       };
 
       await this.state.storage.put('document', this.document);
-
-      // Cache for anonymous readers
-      await this.updateCache();
+      await this.purgeCache();
     });
   }
 
@@ -123,6 +139,10 @@ export class CalendarDO {
   async read(userId?: string): Promise<ReadCalendarResponse> {
     if (!this.document) {
       throw new Error('Document not found');
+    }
+
+    if (userId && !this.hasPrivilege(userId, 'read')) {
+      throw new Error('Insufficient privileges');
     }
 
     const hasWriteAccess = userId ? this.hasPrivilege(userId, 'write') : false;
@@ -172,8 +192,7 @@ export class CalendarDO {
 
       await this.state.storage.put('document', this.document);
 
-      // Update KV cache for anonymous readers
-      await this.updateCache();
+      await this.purgeCache();
 
       // Broadcast update to connected WebSocket clients
       this.broadcastUpdate();
@@ -273,8 +292,8 @@ export class CalendarDO {
         const otherUsers = this.document.privileges.filter(p => p.userId !== targetUserId);
 
         if (otherUsers.length > 0) {
-          // Transfer ownership to the first other user
-          const newOwner = otherUsers[0];
+          // Prefer an existing writer before promoting a read-only collaborator.
+          const newOwner = otherUsers.find(p => p.level === 'write') || otherUsers[0];
           newOwner.level = 'owner';
           newOwner.grantedAt = Date.now();
 
@@ -396,24 +415,13 @@ export class CalendarDO {
   }
 
   /**
-   * Update KV cache for anonymous readers
+   * Remove legacy anonymous cache entries; live reads require authentication.
    */
-  private async updateCache(): Promise<void> {
+  private async purgeCache(): Promise<void> {
     if (!this.document) return;
 
     try {
-      // Cache the calendar data without privileges (indefinitely until updated)
-      const cacheData = {
-        data: this.document.data,
-        version: this.document.version,
-        updatedAt: this.document.updatedAt,
-      };
-
-      // No expiration - cache persists until explicitly updated on write
-      await this.env.CALENDAR_CACHE.put(
-        `calendar:${this.document.id}`,
-        JSON.stringify(cacheData)
-      );
+      await this.env.CALENDAR_CACHE.delete(`calendar:${this.document.id}`);
     } catch (error) {
       console.error('Failed to update cache:', error);
       // Don't throw - cache update failure shouldn't break the write operation
@@ -472,21 +480,26 @@ export class CalendarDO {
 
       return new Response(null, {
         status: 101,
+        headers: { 'Sec-WebSocket-Protocol': request.headers.get('Sec-WebSocket-Protocol') || '' },
         webSocket: client,
       });
     }
 
     // HTTP API endpoints
     if (request.method === 'POST') {
-      const body = await request.json();
+      const body = await request.json() as unknown;
 
       switch (path) {
         case '/initialize':
-          await this.initialize(body.calendarId, body.ownerId, body.data);
+          {
+            const init = body as InitializeRequest;
+            await this.initialize(init.calendarId, init.ownerId, init.data);
+          }
           return Response.json({ success: true });
 
         case '/read': {
-          const readResult = await this.read(body.userId);
+          const readRequest = body as ReadRequest;
+          const readResult = await this.read(readRequest.userId);
           return Response.json(readResult);
         }
 
@@ -501,17 +514,20 @@ export class CalendarDO {
         }
 
         case '/revoke': {
-          const revokeResult = await this.revokePrivilege(body.granterId, body.targetUserId);
+          const revokeRequest = body as RevokeRequest;
+          const revokeResult = await this.revokePrivilege(revokeRequest.granterId, revokeRequest.targetUserId);
           return Response.json(revokeResult);
         }
 
         case '/listPrivileges': {
-          const listResult = await this.listPrivileges(body.requesterId);
+          const listRequest = body as ListPrivilegesRequest;
+          const listResult = await this.listPrivileges(listRequest.requesterId);
           return Response.json(listResult);
         }
 
         case '/destroy': {
-          const destroyResult = await this.destroy(body.requesterId);
+          const destroyRequest = body as DestroyRequest;
+          const destroyResult = await this.destroy(destroyRequest.requesterId);
           return Response.json(destroyResult);
         }
 

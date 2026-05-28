@@ -13,8 +13,11 @@ export interface Privilege {
 
 // API Response types
 export interface CreateUserResponse {
+  success: boolean;
   userId: string;
   createdAt: number;
+  sessionToken: string;
+  message?: string;
 }
 
 export interface RegisterUserResponse {
@@ -44,6 +47,9 @@ export interface WriteCalendarResponse {
 export interface GrantPrivilegeResponse {
   success: boolean;
   message?: string;
+  ownershipTransferred?: boolean;
+  newOwnerId?: string;
+  shouldDestroy?: boolean;
 }
 
 export interface ListCalendarsResponse {

@@ -31,14 +31,14 @@ Follow the browser prompt to authorize Wrangler.
 cd worker
 
 # Create production namespaces
-wrangler kv:namespace create "CALENDAR_CACHE"
-wrangler kv:namespace create "ACTIVATION_TOKENS"
-wrangler kv:namespace create "USERS"
+wrangler kv namespace create "CALENDAR_CACHE"
+wrangler kv namespace create "ACTIVATION_TOKENS"
+wrangler kv namespace create "USERS"
 
 # Create preview namespaces
-wrangler kv:namespace create "CALENDAR_CACHE" --preview
-wrangler kv:namespace create "ACTIVATION_TOKENS" --preview
-wrangler kv:namespace create "USERS" --preview
+wrangler kv namespace create "CALENDAR_CACHE" --preview
+wrangler kv namespace create "ACTIVATION_TOKENS" --preview
+wrangler kv namespace create "USERS" --preview
 ```
 
 Copy the namespace IDs from the output.

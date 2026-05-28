@@ -5,12 +5,17 @@ compatibility_date = "2024-01-01"
 # Durable Objects
 [durable_objects]
 bindings = [
-  { name = "CALENDAR_DO", class_name = "CalendarDO" }
+  { name = "CALENDAR_DO", class_name = "CalendarDO" },
+  { name = "ACTIVATION_TOKEN_DO", class_name = "ActivationTokenDO" }
 ]
 
 [[migrations]]
 tag = "v1"
 new_classes = ["CalendarDO"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["ActivationTokenDO"]
 
 # KV Namespaces
 [[kv_namespaces]]
@@ -36,6 +41,3 @@ preview_id = "YOUR_USERS_PREVIEW_KV_ID"
 # Build configuration
 [build]
 command = "npm run build"
-
-[build.upload]
-format = "service-worker"
