@@ -1,4 +1,5 @@
 import { ClipboardCopy } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 
 interface CopyableIdProps {
   id: string;
@@ -9,6 +10,7 @@ interface CopyableIdProps {
 }
 
 export const CopyableId = ({ id, label, displayLength = 16, className = '', isCompact = false }: CopyableIdProps) => {
+  const { t } = useTranslation();
   const maxWidth = displayLength > 0 ? `${displayLength + 1}ch` : undefined;
 
   return (
@@ -16,8 +18,8 @@ export const CopyableId = ({ id, label, displayLength = 16, className = '', isCo
       {label && <span className="copyable-id__label"><strong>{label}</strong></span>}
       <ClipboardCopy
         isReadOnly
-        hoverTip="Click to copy"
-        clickTip="Copied!"
+        hoverTip={t('copyableId.clickToCopy')}
+        clickTip={t('copyableId.copied')}
         variant="inline-compact"
         isCode
         className="copyable-id__value"

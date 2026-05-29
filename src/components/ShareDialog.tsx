@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   Button,
@@ -21,6 +22,8 @@ import {
 } from '@patternfly/react-core';
 import { useCalendar } from '../context/CalendarContext';
 import { CopyableId } from './CopyableId';
+import ConfirmDialog from './ConfirmDialog';
+import InlineAlert from './InlineAlert';
 import './ShareDialog.css';
 
 interface ShareDialogProps {
@@ -41,6 +44,9 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
   const [isGranting, setIsGranting] = useState(false);
   const [privileges, setPrivileges] = useState<Array<{userId: string; level: string; grantedAt: number; grantedBy: string}>>([]);
   const [isLoadingPrivileges, setIsLoadingPrivileges] = useState(false);
+  const [feedback, setFeedback] = useState<{ title: string; variant: 'danger' | 'success' | 'info' } | null>(null);
+  const [pendingRevokeUserId, setPendingRevokeUserId] = useState<string | null>(null);
+  const modalTitle = syncMode === 'server' ? t('shareDialog.serverMode.title') : t('share.title');
 
   // Load privileges when dialog opens in server mode
   useEffect(() => {
@@ -64,7 +70,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
 
   const handleGenerateLegacy = () => {
     if (!url.trim()) {
-      alert(t('share.enterUrl'));
+      setFeedback({ title: t('share.enterUrl'), variant: 'danger' });
       return;
     }
 
@@ -72,7 +78,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       // Validate URL
       const testUrl = new URL(url.trim());
       if (!['http:', 'https:'].includes(testUrl.protocol)) {
-        alert(t('share.invalidProtocol'));
+        setFeedback({ title: t('share.invalidProtocol'), variant: 'danger' });
         return;
       }
 
@@ -88,13 +94,13 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       const generatedUrl = `${currentOrigin}${basePath}/?import=${base64Url}`;
       setShareUrl(generatedUrl);
     } catch {
-      alert(t('share.invalidFormat'));
+      setFeedback({ title: t('share.invalidFormat'), variant: 'danger' });
     }
   };
 
   const handleGrantAccess = async () => {
     if (!targetUserId.trim()) {
-      alert(t('shareDialog.serverMode.enterUserId'));
+      setFeedback({ title: t('shareDialog.serverMode.enterUserId'), variant: 'danger' });
       return;
     }
 
@@ -102,15 +108,15 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
     try {
       const success = await grantAccess(targetUserId.trim(), privilegeLevel);
       if (success) {
-        alert(t('shareDialog.serverMode.grantSuccess', { userId: targetUserId.substring(0, 8) }));
+        setFeedback({ title: t('shareDialog.serverMode.grantSuccess', { userId: targetUserId.substring(0, 8) }), variant: 'success' });
         setTargetUserId('');
         await loadPrivileges();
       } else {
-        alert(t('shareDialog.serverMode.grantFailed'));
+        setFeedback({ title: t('shareDialog.serverMode.grantFailed'), variant: 'danger' });
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(t('shareDialog.serverMode.error', { error: errorMessage }));
+      setFeedback({ title: t('shareDialog.serverMode.error', { error: errorMessage }), variant: 'danger' });
     } finally {
       setIsGranting(false);
     }
@@ -118,30 +124,23 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
 
   const handleRevokeAccess = async (targetUserId: string) => {
     const isSelfRevoke = targetUserId === userId;
-    const confirmMessage = isSelfRevoke
-      ? t('shareDialog.serverMode.leaveConfirm')
-      : t('shareDialog.serverMode.revokeConfirm', { userId: targetUserId.substring(0, 8) + '...' });
-
-    if (!confirm(confirmMessage)) {
-      return;
-    }
 
     try {
       const result = await revokeAccess(targetUserId);
       if (result.success) {
         if (isSelfRevoke) {
-          alert(t('shareDialog.serverMode.leaveSuccess'));
+          setFeedback({ title: t('shareDialog.serverMode.leaveSuccess'), variant: 'success' });
           onClose();
         } else {
-          alert(t('shareDialog.serverMode.revokeSuccess'));
+          setFeedback({ title: t('shareDialog.serverMode.revokeSuccess'), variant: 'success' });
           await loadPrivileges();
         }
       } else {
-        alert(result.message || t('shareDialog.serverMode.revokeFailed'));
+        setFeedback({ title: result.message || t('shareDialog.serverMode.revokeFailed'), variant: 'danger' });
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(t('shareDialog.serverMode.error', { error: errorMessage }));
+      setFeedback({ title: t('shareDialog.serverMode.error', { error: errorMessage }), variant: 'danger' });
     }
   };
 
@@ -156,13 +155,15 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
   return (
     <Modal
       variant={ModalVariant.large}
-      title={syncMode === 'server' ? t('shareDialog.serverMode.title') : t('share.title')}
+      aria-labelledby="share-dialog-title"
       isOpen={true}
       onClose={onClose}
     >
+      <ModalHeader title={modalTitle} labelId="share-dialog-title" />
       <ModalBody>
         {syncMode === 'server' && calendarId ? (
         <Form className="share-dialog-form">
+          {feedback && <InlineAlert title={feedback.title} variant={feedback.variant} />}
           {/* Server-based sharing */}
           <FormSection title={t('shareDialog.serverMode.calendarLink')} className="share-dialog-section">
             <p className="share-dialog-section__description">
@@ -182,7 +183,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
               </ClipboardCopy>
             </div>
             <div className="share-dialog-copy-row">
-              <CopyableId id={calendarId} label="Calendar ID:" displayLength={0} />
+              <CopyableId id={calendarId} label={t('shareDialog.serverMode.calendarId')} displayLength={0} />
             </div>
           </FormSection>
 
@@ -242,7 +243,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
                 {privileges.map((priv) => (
                   <div key={priv.userId} className="share-dialog-access-row">
                     <div className="share-dialog-user-cell">
-                      <CopyableId id={priv.userId} label="User" displayLength={0} />
+                      <CopyableId id={priv.userId} label={t('shareDialog.serverMode.userLabel')} displayLength={0} />
                       <div className="share-dialog-user-meta">
                         {priv.userId === userId && (
                           <Label color="blue">{t('shareDialog.serverMode.selfBadge')}</Label>
@@ -255,7 +256,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
                     <Button
                       variant={priv.userId === userId ? ButtonVariant.secondary : ButtonVariant.danger}
                       isDanger={priv.userId !== userId}
-                      onClick={() => handleRevokeAccess(priv.userId)}
+                      onClick={() => setPendingRevokeUserId(priv.userId)}
                     >
                       {priv.userId === userId ? t('shareDialog.serverMode.leaveButton') : t('shareDialog.serverMode.revokeButton')}
                     </Button>
@@ -320,6 +321,23 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
           {t('share.close')}
         </Button>
       </ModalFooter>
+      {pendingRevokeUserId && (
+        <ConfirmDialog
+          title={pendingRevokeUserId === userId ? t('shareDialog.serverMode.leaveButton') : t('shareDialog.serverMode.revokeButton')}
+          message={pendingRevokeUserId === userId
+            ? t('shareDialog.serverMode.leaveConfirm')
+            : t('shareDialog.serverMode.revokeConfirm', { userId: pendingRevokeUserId.substring(0, 8) + '...' })}
+          confirmText={pendingRevokeUserId === userId ? t('shareDialog.serverMode.leaveButton') : t('shareDialog.serverMode.revokeButton')}
+          cancelText={t('share.close')}
+          confirmVariant={ButtonVariant.danger}
+          onConfirm={async () => {
+            const targetUserId = pendingRevokeUserId;
+            setPendingRevokeUserId(null);
+            await handleRevokeAccess(targetUserId);
+          }}
+          onCancel={() => setPendingRevokeUserId(null)}
+        />
+      )}
     </Modal>
   );
 };

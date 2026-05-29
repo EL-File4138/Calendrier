@@ -25,7 +25,17 @@ interface SessionDetailState {
   session: Session | null;
 }
 
+interface PositionedSession {
+  course: Course;
+  session: Session;
+  start: number;
+  end: number;
+  column: number;
+  columns: number;
+}
+
 const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
+  const TIME_LABEL_WIDTH = 80;
   const { t } = useTranslation();
   const { courses, settings, duplicateCourse, deleteCourse, title } = useCalendar();
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -43,6 +53,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   const [dragStart, setDragStart] = useState<{ day: Weekday; y: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ day: Weekday; y: number } | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const allSessions = useMemo(
     () => courses.flatMap(course => course.sessions),
@@ -82,21 +93,95 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
     return slots;
   }, [startMinutes, endMinutes]);
 
+  const sessionsByDay = useMemo(() => {
+    const layouts = new Map<Weekday, PositionedSession[]>();
+
+    visibleWeekdays.forEach((day) => {
+      const daySessions = courses
+        .flatMap((course) => course.sessions
+          .filter((session) => session.meetDay === day)
+          .map((session) => ({
+            course,
+            session,
+            start: timeToMinutes(session.startTime),
+            end: timeToMinutes(session.endTime),
+            column: 0,
+            columns: 1,
+          })))
+        .sort((a, b) => a.start - b.start || b.end - a.end);
+
+      const positioned: PositionedSession[] = [];
+      let group: PositionedSession[] = [];
+      let groupEnd = -Infinity;
+
+      const flushGroup = () => {
+        if (group.length === 0) return;
+
+        const columnEnds: number[] = [];
+        group.forEach((item) => {
+          const column = columnEnds.findIndex((end) => end <= item.start);
+          item.column = column === -1 ? columnEnds.length : column;
+          columnEnds[item.column] = item.end;
+        });
+
+        const columns = columnEnds.length || 1;
+        group.forEach((item) => {
+          item.columns = columns;
+          positioned.push(item);
+        });
+
+        group = [];
+        groupEnd = -Infinity;
+      };
+
+      daySessions.forEach((item) => {
+        if (group.length > 0 && item.start >= groupEnd) {
+          flushGroup();
+        }
+
+        group.push(item);
+        groupEnd = Math.max(groupEnd, item.end);
+      });
+      flushGroup();
+
+      layouts.set(day, positioned);
+    });
+
+    return layouts;
+  }, [courses, visibleWeekdays]);
+
   useEffect(() => {
     const handleClickOutside = () => {
       setContextMenu({ visible: false, x: 0, y: 0, courseId: null });
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenu({ visible: false, x: 0, y: 0, courseId: null });
+      }
+    };
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
+
+  useEffect(() => {
+    if (contextMenu.visible) {
+      contextMenuRef.current?.focus();
+    }
+  }, [contextMenu.visible]);
 
   const handleContextMenu = (e: React.MouseEvent, courseId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    const menuWidth = 140;
+    const menuHeight = 120;
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: Math.min(e.clientX, window.innerWidth - menuWidth),
+      y: Math.min(e.clientY, window.innerHeight - menuHeight),
       courseId,
     });
   };
@@ -155,14 +240,20 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
     const rect = calendarRef.current?.getBoundingClientRect();
     if (!rect) return null;
 
-    const relativeX = x - rect.left - 80; // 80px for time labels
-    const dayWidth = (rect.width - 80) / visibleWeekdays.length;
+    const relativeX = x - rect.left - TIME_LABEL_WIDTH;
+    const dayWidth = (rect.width - TIME_LABEL_WIDTH) / visibleWeekdays.length;
     const dayIndex = Math.floor(relativeX / dayWidth);
 
     if (dayIndex >= 0 && dayIndex < visibleWeekdays.length) {
       return visibleWeekdays[dayIndex];
     }
     return null;
+  };
+
+  const resetDragState = () => {
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -191,9 +282,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
         onDragCreate(dragStart.day, minutesToTime(startTime), minutesToTime(endTime));
       }
     }
-    setIsDragging(false);
-    setDragStart(null);
-    setDragEnd(null);
+    resetDragState();
   };
 
   const renderDragPreview = () => {
@@ -215,7 +304,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   };
 
   return (
-    <div className="week-calendar" ref={calendarRef}>
+    <div className="week-calendar" ref={calendarRef} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={resetDragState}>
       <h2 className="calendar-title print-only">{title}</h2>
       <div className="calendar-grid">
         <div className="calendar-header">
@@ -230,7 +319,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
         <div className="calendar-body">
           <div className="time-labels">
             {timeSlots.map(minutes => (
-              <div key={minutes} className="time-label" style={{ height: '80px' }}>
+              <div key={minutes} className="time-label">
                 {formatTime(minutesToTime(minutes), settings.timeFormat)}
               </div>
             ))}
@@ -238,25 +327,23 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
 
           <div className="days-grid">
             {visibleWeekdays.map(day => (
-              <div
-                key={day}
-                className="day-column"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
+                <div
+                  key={day}
+                  className="day-column"
+                  onMouseDown={handleMouseDown}
+                >
                 {timeSlots.map(minutes => (
-                  <div key={minutes} className="time-slot" style={{ height: '80px' }} />
+                  <div key={minutes} className="time-slot" />
                 ))}
 
-                {courses.map(course =>
-                  course.sessions
-                    .filter(session => session.meetDay === day)
-                    .map(session => {
+                {(sessionsByDay.get(day) || []).map(({ course, session, column, columns }) => {
                       const { top, height } = getPositionForSession(
                         session.startTime,
                         session.endTime
                       );
+                      const width = 100 / columns;
+                      const left = column * width;
+
                       return (
                         <div
                           key={session.id}
@@ -264,6 +351,9 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
                           style={{
                             top: `${top}%`,
                             height: `${height}%`,
+                            left: `calc(${left}% + 2px)`,
+                            right: 'auto',
+                            width: `calc(${width}% - 4px)`,
                           }}
                         >
                           <CourseBlock
@@ -275,8 +365,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
                           />
                         </div>
                       );
-                    })
-                )}
+                    })}
 
                 {isDragging && dragStart?.day === day && renderDragPreview()}
               </div>
@@ -288,15 +377,18 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
       {contextMenu.visible && (
         <div
           className="context-menu"
+          ref={contextMenuRef}
+          role="menu"
+          tabIndex={-1}
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button onClick={handleDuplicate}>{t('contextMenu.duplicate')}</button>
-          <button onClick={() => {
+          <button role="menuitem" onClick={handleDuplicate}>{t('contextMenu.duplicate')}</button>
+          <button role="menuitem" onClick={() => {
             if (contextMenu.courseId) onEditCourse(contextMenu.courseId);
             setContextMenu({ visible: false, x: 0, y: 0, courseId: null });
           }}>{t('contextMenu.edit')}</button>
-          <button onClick={handleDelete}>{t('contextMenu.delete')}</button>
+          <button role="menuitem" onClick={handleDelete}>{t('contextMenu.delete')}</button>
         </div>
       )}
 

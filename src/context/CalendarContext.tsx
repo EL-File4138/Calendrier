@@ -51,6 +51,7 @@ interface CalendarContextType {
   hasWriteAccess: boolean;
   isSyncing: boolean;
   lastSyncError: string | null;
+  localError: string | null;
   version: number;
 
   // CRUD operations
@@ -69,6 +70,7 @@ interface CalendarContextType {
 
   // Server operations
   createServerCalendar: () => Promise<string>;
+  registerUserSession: (userId: string, sessionToken: string) => Promise<void>;
   loadServerCalendar: (calendarId: string) => Promise<void>;
   syncToServer: () => Promise<void>;
   deleteCalendar: () => Promise<void>;
@@ -156,6 +158,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const [hasCalendarAccess, setHasCalendarAccess] = useState(false); // Any access (read/write/owner)
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [version, setVersion] = useState(1);
   const [activeUsers, setActiveUsers] = useState<Array<{ userId: string; displayName?: string }>>([]);
 
@@ -269,7 +272,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
         // Handle QuotaExceededError
         if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-          alert('Browser storage is full. Please delete some old calendars or export your data.');
+          setLocalError('Browser storage is full. Please delete old calendars or export your data.');
         }
       }
     }
@@ -585,7 +588,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Failed to import data:', error);
-      alert('Invalid JSON format');
+      setLocalError('Invalid JSON format');
     }
   };
 
@@ -738,6 +741,15 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const registerUserSession = async (nextUserId: string, nextSessionToken: string): Promise<void> => {
+    setUserId(nextUserId);
+    setSessionToken(nextSessionToken);
+    setIsRegistered(true);
+    safeLocalStorage.setItem(USER_ID_KEY, nextUserId);
+    safeLocalStorage.setItem(SESSION_TOKEN_KEY, nextSessionToken);
+    safeLocalStorage.setItem(USER_REGISTERED_KEY, 'true');
+  };
+
   return (
     <CalendarContext.Provider
       value={{
@@ -754,6 +766,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         hasWriteAccess,
         isSyncing,
         lastSyncError,
+        localError,
         version,
         addCourse,
         updateCourse,
@@ -766,6 +779,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         exportData,
         importData,
         createServerCalendar,
+        registerUserSession,
         loadServerCalendar,
         syncToServer,
         deleteCalendar,

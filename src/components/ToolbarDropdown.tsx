@@ -27,6 +27,11 @@ export const ToolbarDropdown = ({ label, icon, items, className = '' }: ToolbarD
     setIsOpen(false);
   };
 
+  const runAfterClose = (action: () => void) => {
+    setIsOpen(false);
+    window.setTimeout(action, 0);
+  };
+
   return (
     <Dropdown
       isOpen={isOpen}
@@ -53,7 +58,7 @@ export const ToolbarDropdown = ({ label, icon, items, className = '' }: ToolbarD
             key={index}
             onClick={() => {
               if (!item.disabled) {
-                item.onClick();
+                runAfterClose(item.onClick);
               }
             }}
             isDisabled={item.disabled}

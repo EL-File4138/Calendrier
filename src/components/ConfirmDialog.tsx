@@ -1,4 +1,4 @@
-import { Modal, ModalVariant, Button, ButtonVariant, ModalBody, ModalFooter } from '@patternfly/react-core';
+import { Modal, ModalVariant, Button, ButtonVariant, ModalHeader, ModalBody, ModalFooter } from '@patternfly/react-core';
 
 interface ConfirmDialogProps {
   title: string;
@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   showSecondaryAction?: boolean;
   secondaryActionText?: string;
   onSecondaryAction?: () => void;
+  confirmVariant?: ButtonVariant;
 }
 
 const ConfirmDialog = ({
@@ -22,19 +23,21 @@ const ConfirmDialog = ({
   showSecondaryAction = false,
   secondaryActionText = '',
   onSecondaryAction,
+  confirmVariant = ButtonVariant.primary,
 }: ConfirmDialogProps) => {
   return (
     <Modal
       variant={ModalVariant.small}
-      title={title}
+      aria-labelledby="confirm-dialog-title"
       isOpen={true}
       onClose={onCancel}
     >
+      <ModalHeader title={title} labelId="confirm-dialog-title" />
       <ModalBody>
         <p>{message}</p>
       </ModalBody>
       <ModalFooter>
-        <Button key="confirm" variant={ButtonVariant.primary} onClick={onConfirm}>
+        <Button key="confirm" variant={confirmVariant} onClick={onConfirm}>
           {confirmText}
         </Button>
         {showSecondaryAction && onSecondaryAction && (

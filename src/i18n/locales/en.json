@@ -54,6 +54,7 @@
     "course": "Course",
     "required": "*",
     "titleRequired": "Course title is required",
+    "invalidTimeRange": "Each session must end after it starts.",
     "deleteConfirm": "Are you sure you want to delete this course?"
   },
   "settings": {
@@ -145,11 +146,18 @@
     "calendarNotFound": "Calendar not found",
     "failedToFetchCalendar": "Failed to fetch calendar data",
     "invalidCalendarFormat": "Invalid calendar data format",
-    "failedToSaveImage": "Failed to save image"
+    "failedToSaveImage": "Failed to save image",
+    "storageFull": "Browser storage is full. Please delete old calendars or export your data.",
+    "connectionLost": "Connection lost. Please refresh the page.",
+    "invalidJson": "Invalid JSON format"
   },
   "copyableId": {
     "clickToCopy": "Click to copy",
     "copied": "Copied!"
+  },
+  "errorBoundary": {
+    "title": "Calendrier could not render",
+    "reload": "Reload"
   },
   "shareDialog": {
     "serverMode": {
@@ -190,6 +198,18 @@
       "title": "Tip:",
       "message": "Create a user account and save your calendar to the server for easier sharing and real-time collaboration!"
     }
+  },
+  "urlHandler": {
+    "loadingCalendar": "Loading calendar...",
+    "calendarLoaded": "Calendar loaded successfully!",
+    "loadFailed": "Failed to load calendar: {{error}}",
+    "importingCalendar": "Importing calendar...",
+    "invalidUrl": "Invalid URL format",
+    "invalidProtocol": "Only HTTP/HTTPS URLs are allowed",
+    "fetchFailed": "Failed to fetch: {{error}}",
+    "invalidCalendarData": "Invalid calendar data format",
+    "importFailed": "Import failed: {{error}}",
+    "importSucceeded": "Calendar imported successfully!"
   },
   "userPanel": {
     "userStatus": "User Status",

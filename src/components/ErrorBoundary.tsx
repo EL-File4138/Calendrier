@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Alert, Button } from '@patternfly/react-core';
+import i18n from '../i18n/config';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -25,12 +26,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       return this.props.children;
     }
 
-    return (
-      <div className="calendrier-error-state">
-        <Alert variant="danger" isInline title="Calendrier could not render">
+      return (
+        <div className="calendrier-error-state">
+        <Alert variant="danger" isInline title={i18n.t('errorBoundary.title')}>
           <p>{this.state.error.message}</p>
           <Button variant="secondary" onClick={() => window.location.reload()}>
-            Reload
+            {i18n.t('errorBoundary.reload')}
           </Button>
         </Alert>
       </div>

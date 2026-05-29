@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   Button,
@@ -35,10 +36,11 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
   return (
     <Modal
       variant={ModalVariant.small}
-      title={t('settings.title')}
+      aria-labelledby="settings-modal-title"
       isOpen={true}
       onClose={onClose}
     >
+      <ModalHeader title={t('settings.title')} labelId="settings-modal-title" />
       <ModalBody>
         <Form>
         <FormGroup label={t('settings.timeFormat')} role="radiogroup" className="pf-v6-u-mb-md">

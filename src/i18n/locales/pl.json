@@ -54,6 +54,7 @@
     "course": "Kurs",
     "required": "*",
     "titleRequired": "Nazwa kursu jest wymagana",
+    "invalidTimeRange": "Każde zajęcia muszą kończyć się po rozpoczęciu.",
     "deleteConfirm": "Czy na pewno chcesz usunąć ten kurs?"
   },
   "settings": {
@@ -145,11 +146,18 @@
     "calendarNotFound": "Nie znaleziono kalendarza",
     "failedToFetchCalendar": "Nie udało się pobrać danych kalendarza",
     "invalidCalendarFormat": "Nieprawidłowy format danych kalendarza",
-    "failedToSaveImage": "Nie udało się zapisać obrazu"
+    "failedToSaveImage": "Nie udało się zapisać obrazu",
+    "storageFull": "Pamięć przeglądarki jest pełna. Usuń stare kalendarze lub wyeksportuj dane.",
+    "connectionLost": "Połączenie zostało utracone. Odśwież stronę.",
+    "invalidJson": "Nieprawidłowy format JSON"
   },
   "copyableId": {
     "clickToCopy": "Kliknij, aby skopiować",
     "copied": "Skopiowano!"
+  },
+  "errorBoundary": {
+    "title": "Nie udało się wyrenderować Calendrier",
+    "reload": "Odśwież"
   },
   "shareDialog": {
     "serverMode": {
@@ -190,6 +198,18 @@
       "title": "Wskazówka:",
       "message": "Utwórz konto użytkownika i zapisz swój kalendarz na serwerze, aby łatwiej go udostępniać i współpracować w czasie rzeczywistym!"
     }
+  },
+  "urlHandler": {
+    "loadingCalendar": "Ładowanie kalendarza...",
+    "calendarLoaded": "Kalendarz został pomyślnie załadowany!",
+    "loadFailed": "Nie udało się załadować kalendarza: {{error}}",
+    "importingCalendar": "Importowanie kalendarza...",
+    "invalidUrl": "Nieprawidłowy format URL",
+    "invalidProtocol": "Dozwolone są tylko adresy HTTP/HTTPS",
+    "fetchFailed": "Nie udało się pobrać: {{error}}",
+    "invalidCalendarData": "Nieprawidłowy format danych kalendarza",
+    "importFailed": "Import nie powiódł się: {{error}}",
+    "importSucceeded": "Kalendarz został pomyślnie zaimportowany!"
   },
   "userPanel": {
     "userStatus": "Status użytkownika",

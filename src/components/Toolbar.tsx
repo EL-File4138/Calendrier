@@ -22,6 +22,7 @@ import {
 } from '@patternfly/react-icons';
 import { useCalendar } from '../context/CalendarContext';
 import ConfirmDialog from './ConfirmDialog';
+import InlineAlert from './InlineAlert';
 import ShareDialog from './ShareDialog';
 import { UserPanel } from './UserPanel';
 import { ToolbarDropdown } from './ToolbarDropdown';
@@ -55,6 +56,33 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const [dialog, setDialog] = useState<DialogType>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+
+  const showAlert = (message: string) => {
+    setAlertMessage(message);
+  };
+
+  const waitForPaint = () => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
+  const runInLightMode = async <T,>(callback: () => T | Promise<T>): Promise<T> => {
+    const root = document.documentElement;
+    const shouldRestoreDarkMode = root.classList.contains('dark-mode');
+
+    if (shouldRestoreDarkMode) {
+      root.classList.remove('dark-mode');
+      await waitForPaint();
+    }
+
+    try {
+      return await callback();
+    } finally {
+      if (shouldRestoreDarkMode) {
+        root.classList.add('dark-mode');
+      }
+    }
+  };
 
   const handleExport = () => {
     const jsonString = exportData();
@@ -116,7 +144,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     const toolbarElement = document.querySelector('.calendrier-toolbar') as HTMLElement;
 
     if (!calendarElement) {
-      alert(t('errors.calendarNotFound'));
+      showAlert(t('errors.calendarNotFound'));
       return;
     }
 
@@ -130,14 +158,14 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
         titleElement.style.display = 'block';
       }
 
-      const dataUrl = await toPng(calendarElement, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: darkMode ? '#121212' : '#ffffff',
-        cacheBust: true,
-        width: calendarElement.scrollWidth,
-        height: calendarElement.scrollHeight,
-      });
+      const dataUrl = await runInLightMode(() => toPng(calendarElement, {
+          quality: 1,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+          width: calendarElement.scrollWidth,
+          height: calendarElement.scrollHeight,
+        }));
 
       if (toolbarElement) {
         toolbarElement.style.display = '';
@@ -153,7 +181,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
       link.click();
     } catch (error) {
       console.error('Failed to save image:', error);
-      alert(t('errors.failedToSaveImage'));
+      showAlert(t('errors.failedToSaveImage'));
 
       if (toolbarElement) {
         toolbarElement.style.display = '';
@@ -165,8 +193,10 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    await runInLightMode(() => {
+      window.print();
+    });
   };
 
   const handleTitleClick = () => {
@@ -192,16 +222,16 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
   const handleSaveToServer = async () => {
     if (!userId) {
-      alert(t('toolbar.saveToServerError'));
+      showAlert(t('toolbar.saveToServerError'));
       return;
     }
 
     try {
       const calendarId = await createServerCalendar();
-      alert(t('toolbar.saveToServerSuccess', { id: calendarId.substring(0, 8) }));
+      showAlert(t('toolbar.saveToServerSuccess', { id: calendarId.substring(0, 8) }));
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(t('toolbar.saveToServerFailed', { error: errorMessage }));
+      showAlert(t('toolbar.saveToServerFailed', { error: errorMessage }));
     }
   };
 
@@ -215,7 +245,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
       setDialog(null);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(t('toolbar.deleteCalendarFailed', { error: errorMessage }));
+      showAlert(t('toolbar.deleteCalendarFailed', { error: errorMessage }));
     }
   };
 
@@ -238,7 +268,6 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
                 className="calendrier-title"
                 onClick={handleTitleClick}
                 title={t('toolbar.editTitlePlaceholder')}
-                style={{ cursor: 'pointer', margin: 0 }}
               >
                 {title}
               </h1>
@@ -325,11 +354,13 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
         </div>
       </header>
 
+      {alertMessage && <InlineAlert title={alertMessage} variant="info" />}
+
       <input
         ref={fileInputRef}
         type="file"
         accept=".json"
-        style={{ display: 'none' }}
+        className="calendrier-file-input"
         onChange={handleFileChange}
       />
 

@@ -14,6 +14,10 @@
   overflow: hidden;
 }
 
+.calendrier-loading-state {
+  flex: 1;
+}
+
 .calendrier-app .pf-v6-c-page__main {
   flex: 1;
   width: 100%;
@@ -243,15 +247,6 @@ html.dark-mode .pf-v6-c-modal-box__title {
   color: #e0e0e0;
 }
 
-/* Ensure modal header is visible */
-.pf-v6-c-modal-box__header {
-  display: flex !important;
-}
-
-.pf-v6-c-modal-box__title {
-  display: block !important;
-}
-
 html.dark-mode .pf-v6-c-modal-box__body {
   background: #2a2a2a;
   color: #e0e0e0;
@@ -271,16 +266,16 @@ html.dark-mode input[type="text"],
 html.dark-mode input[type="time"],
 html.dark-mode input[type="color"],
 html.dark-mode select {
-  background: #1e1e1e !important;
-  border-color: #444 !important;
-  color: #e0e0e0 !important;
+  background: #1e1e1e;
+  border-color: #444;
+  color: #e0e0e0;
 }
 
 html.dark-mode .pf-v6-c-form-control:focus,
 html.dark-mode .pf-v6-c-text-input-group__text-input:focus,
 html.dark-mode input[type="text"]:focus,
 html.dark-mode input[type="time"]:focus {
-  border-color: #0066cc !important;
+  border-color: #0066cc;
 }
 
 html.dark-mode .pf-v6-c-form__label {
@@ -294,7 +289,7 @@ html.dark-mode .pf-v6-c-form__group-label-main {
 /* Placeholder text dark mode */
 html.dark-mode input::placeholder,
 html.dark-mode textarea::placeholder {
-  color: #888 !important;
+  color: #888;
   opacity: 1;
 }
 
@@ -337,6 +332,10 @@ html.dark-mode textarea::placeholder {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.course-form-delete-button {
+  margin-inline-start: auto;
+}
+
 .pf-v6-c-modal-box {
   max-width: min(var(--pf-v6-c-modal-box--MaxWidth, 100vw), calc(100vw - 2rem));
 }
@@ -371,6 +370,13 @@ html.dark-mode textarea::placeholder {
   white-space: normal;
 }
 
+.session-detail-color-swatch {
+  width: 2.5rem;
+  height: 1.25rem;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border-radius--small);
+}
+
 @media (max-width: 768px) {
   .course-form-grid--title,
   .course-form-grid--three {
@@ -379,6 +385,10 @@ html.dark-mode textarea::placeholder {
 
   .course-color-picker {
     width: 100%;
+  }
+
+  .course-form-delete-button {
+    margin-inline-start: 0;
   }
 
   .pf-v6-c-modal-box {
@@ -459,29 +469,29 @@ html.dark-mode .pf-v6-c-form-control__select,
 html.dark-mode .pf-v6-c-select,
 html.dark-mode .pf-v6-c-select__toggle,
 html.dark-mode .pf-v6-c-form-control.pf-m-select {
-  background: #1e1e1e !important;
-  border-color: #444 !important;
-  color: #e0e0e0 !important;
+  background: #1e1e1e;
+  border-color: #444;
+  color: #e0e0e0;
 }
 
 html.dark-mode .pf-v6-c-select__menu {
-  background: #2a2a2a !important;
-  border-color: #444 !important;
+  background: #2a2a2a;
+  border-color: #444;
 }
 
 html.dark-mode .pf-v6-c-select__menu-item {
-  color: #e0e0e0 !important;
+  color: #e0e0e0;
   background: transparent;
 }
 
 html.dark-mode .pf-v6-c-select__menu-item:hover {
-  background: #3a3a3a !important;
+  background: #3a3a3a;
 }
 
 /* FormSelect option elements */
 html.dark-mode .pf-v6-c-form-control__select option {
-  background: #2a2a2a !important;
-  color: #e0e0e0 !important;
+  background: #2a2a2a;
+  color: #e0e0e0;
 }
 
 /* Radio dark mode */

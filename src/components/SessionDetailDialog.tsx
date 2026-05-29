@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   Button,
@@ -34,10 +35,11 @@ const SessionDetailDialog = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={course.title}
+      aria-labelledby="session-detail-title"
       isOpen={true}
       onClose={onClose}
     >
+      <ModalHeader title={course.title} labelId="session-detail-title" />
       <ModalBody>
         <DescriptionList>
         <DescriptionListGroup>
@@ -79,13 +81,8 @@ const SessionDetailDialog = ({
           <DescriptionListTerm>{t('sessionDetail.color')}</DescriptionListTerm>
           <DescriptionListDescription>
             <div
-              style={{
-                width: '40px',
-                height: '20px',
-                backgroundColor: course.color,
-                borderRadius: 'var(--pf-t--global--border-radius--small)',
-                border: '1px solid var(--pf-t--global--border--color--default)'
-              }}
+              className="session-detail-color-swatch"
+              style={{ backgroundColor: course.color }}
             />
           </DescriptionListDescription>
         </DescriptionListGroup>

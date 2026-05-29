@@ -13,6 +13,10 @@ export interface Session {
   location?: string;
 }
 
+export interface EditableSession extends Omit<Session, 'id'> {
+  localId: string;
+}
+
 export interface Course {
   id: string;
   title: string;

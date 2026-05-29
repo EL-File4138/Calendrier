@@ -54,6 +54,7 @@
     "course": "课程",
     "required": "*",
     "titleRequired": "课程名称为必填项",
+    "invalidTimeRange": "每个课程时段的结束时间必须晚于开始时间。",
     "deleteConfirm": "确定要删除此课程吗？"
   },
   "settings": {
@@ -145,11 +146,18 @@
     "calendarNotFound": "未找到日历",
     "failedToFetchCalendar": "获取日历数据失败",
     "invalidCalendarFormat": "无效的日历数据格式",
-    "failedToSaveImage": "保存图片失败"
+    "failedToSaveImage": "保存图片失败",
+    "storageFull": "浏览器存储空间已满。请删除旧日历或导出数据。",
+    "connectionLost": "连接已断开，请刷新页面。",
+    "invalidJson": "JSON 格式无效"
   },
   "copyableId": {
     "clickToCopy": "点击复制",
     "copied": "已复制！"
+  },
+  "errorBoundary": {
+    "title": "Calendrier 无法渲染",
+    "reload": "重新加载"
   },
   "shareDialog": {
     "serverMode": {
@@ -190,6 +198,18 @@
       "title": "提示：",
       "message": "创建用户账户并将日历保存到服务器，以便更轻松地分享和实时协作！"
     }
+  },
+  "urlHandler": {
+    "loadingCalendar": "正在加载日历...",
+    "calendarLoaded": "日历加载成功！",
+    "loadFailed": "加载日历失败：{{error}}",
+    "importingCalendar": "正在导入日历...",
+    "invalidUrl": "URL 格式无效",
+    "invalidProtocol": "仅允许 HTTP/HTTPS URL",
+    "fetchFailed": "获取失败：{{error}}",
+    "invalidCalendarData": "日历数据格式无效",
+    "importFailed": "导入失败：{{error}}",
+    "importSucceeded": "日历导入成功！"
   },
   "userPanel": {
     "userStatus": "用户状态",

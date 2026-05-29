@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   Button,
@@ -20,10 +21,12 @@ import {
   Divider
 } from '@patternfly/react-core';
 import { TrashIcon, PlusCircleIcon } from '@patternfly/react-icons';
-import type { Session, Weekday } from '../types/Course';
-import { WEEKDAYS } from '../utils/timeUtils';
+import type { EditableSession, Session, Weekday } from '../types/Course';
+import { WEEKDAYS, timeToMinutes } from '../utils/timeUtils';
 import { getNextColor } from '../utils/colors';
 import { useCalendar } from '../context/CalendarContext';
+import ConfirmDialog from './ConfirmDialog';
+import InlineAlert from './InlineAlert';
 
 interface CourseFormProps {
   courseId?: string;
@@ -45,23 +48,27 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
   const [color, setColor] = useState(
     existingCourse?.color || getNextColor(courses.map(c => c.color))
   );
-  const [sessions, setSessions] = useState<Omit<Session, 'id'>[]>(
-    existingCourse?.sessions || [
-      {
-        meetDay: initialData?.day || 'Monday',
-        startTime: initialData?.startTime || '09:00',
-        endTime: initialData?.endTime || '10:00',
-        sessionType: '',
-        instructor: '',
-        location: '',
-      },
-    ]
+  const createEditableSession = (session?: Partial<Session>): EditableSession => ({
+    localId: crypto.randomUUID(),
+    meetDay: session?.meetDay || initialData?.day || 'Monday',
+    startTime: session?.startTime || initialData?.startTime || '09:00',
+    endTime: session?.endTime || initialData?.endTime || '10:00',
+    sessionType: session?.sessionType || '',
+    instructor: session?.instructor || '',
+    location: session?.location || '',
+  });
+  const [sessions, setSessions] = useState<EditableSession[]>(
+    existingCourse?.sessions.map((session) => createEditableSession(session)) || [createEditableSession()]
   );
+  const [formError, setFormError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const modalTitle = courseId ? t('courseForm.titleEdit') : t('courseForm.titleAdd');
 
   const handleAddSession = () => {
     setSessions([
       ...sessions,
       {
+        localId: crypto.randomUUID(),
         meetDay: 'Monday',
         startTime: '09:00',
         endTime: '10:00',
@@ -78,22 +85,38 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
     }
   };
 
-  const handleSessionChange = (index: number, field: keyof Omit<Session, 'id'>, value: string) => {
+  const handleSessionChange = (index: number, field: keyof Omit<EditableSession, 'localId'>, value: string) => {
     const newSessions = [...sessions];
     newSessions[index] = { ...newSessions[index], [field]: value };
     setSessions(newSessions);
+    if (formError) setFormError(null);
   };
 
   const handleSubmit = () => {
     if (!title.trim()) {
-      alert(t('courseForm.titleRequired'));
+      setFormError(t('courseForm.titleRequired'));
       return;
     }
 
+    const invalidSession = sessions.find((session) => timeToMinutes(session.endTime) <= timeToMinutes(session.startTime));
+    if (invalidSession) {
+      setFormError(t('courseForm.invalidTimeRange'));
+      return;
+    }
+
+    setFormError(null);
     const courseData = {
       title: title.trim(),
       color,
-      sessions: sessions.map(s => ({ ...s, id: crypto.randomUUID() })) as Session[],
+      sessions: sessions.map((session) => ({
+        meetDay: session.meetDay,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        sessionType: session.sessionType,
+        instructor: session.instructor,
+        location: session.location,
+        id: crypto.randomUUID(),
+      })) as Session[],
     };
 
     if (courseId) {
@@ -105,22 +128,31 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
   };
 
   const handleDelete = () => {
-    if (courseId && window.confirm(t('courseForm.deleteConfirm'))) {
+    if (courseId) {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (courseId) {
       deleteCourse(courseId);
       onClose();
     }
   };
 
   return (
-    <Modal
-      variant={ModalVariant.large}
-      title={courseId ? t('courseForm.titleEdit') : t('courseForm.titleAdd')}
-      isOpen={true}
-      onClose={onClose}
-    >
-      <ModalBody>
-        <Form>
-        <div className="course-form-grid course-form-grid--title">
+    <>
+      <Modal
+        variant={ModalVariant.large}
+        aria-labelledby="course-form-title"
+        isOpen={true}
+        onClose={onClose}
+      >
+        <ModalHeader title={modalTitle} labelId="course-form-title" />
+        <ModalBody>
+          <Form>
+          {formError && <InlineAlert title={formError} variant="danger" />}
+          <div className="course-form-grid course-form-grid--title">
           <FormGroup
             label={t('courseForm.courseTitle')}
             isRequired
@@ -154,7 +186,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
 
         <FormSection title={t('courseForm.sessions')}>
           {sessions.map((session, index) => (
-            <Card key={index} className="pf-v6-u-mb-md">
+            <Card key={session.localId} className="pf-v6-u-mb-md">
               <CardHeader>
                 <CardTitle>
                   <div className="pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-center">
@@ -252,22 +284,34 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
             {t('courseForm.addSession')}
           </Button>
         </FormSection>
-      </Form>
-      </ModalBody>
-      <ModalFooter>
-        <Button key="submit" variant={ButtonVariant.primary} onClick={handleSubmit}>
-          {courseId ? t('courseForm.update') : t('courseForm.add')} {t('courseForm.course')}
-        </Button>
-        <Button key="cancel" variant={ButtonVariant.link} onClick={onClose}>
-          {t('courseForm.cancel')}
-        </Button>
-        {courseId && (
-          <Button key="delete" variant={ButtonVariant.danger} onClick={handleDelete} style={{ marginLeft: 'auto' }}>
-            {t('courseForm.deleteCourse')}
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button key="submit" variant={ButtonVariant.primary} onClick={handleSubmit}>
+            {courseId ? t('courseForm.update') : t('courseForm.add')} {t('courseForm.course')}
           </Button>
-        )}
-      </ModalFooter>
-    </Modal>
+          <Button key="cancel" variant={ButtonVariant.link} onClick={onClose}>
+            {t('courseForm.cancel')}
+          </Button>
+          {courseId && (
+            <Button key="delete" variant={ButtonVariant.danger} onClick={handleDelete} className="course-form-delete-button">
+              {t('courseForm.deleteCourse')}
+            </Button>
+          )}
+        </ModalFooter>
+      </Modal>
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title={t('courseForm.deleteCourse')}
+          message={t('courseForm.deleteConfirm')}
+          confirmText={t('courseForm.deleteCourse')}
+          cancelText={t('courseForm.cancel')}
+          confirmVariant={ButtonVariant.danger}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+    </>
   );
 };
 

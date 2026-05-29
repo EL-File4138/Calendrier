@@ -63,19 +63,19 @@ export const URLHandler = () => {
 
   const handleLoadCalendar = async (calendarId: string) => {
     setProcessing(true);
-    setMessage('Loading calendar...');
+    setMessage(t('urlHandler.loadingCalendar'));
     setMessageType('info');
 
     try {
       await loadServerCalendar(calendarId);
-      setMessage('Calendar loaded successfully!');
+      setMessage(t('urlHandler.calendarLoaded'));
       setMessageType('success');
 
       // Auto-hide success message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setMessage(`Failed to load calendar: ${errorMessage}`);
+      setMessage(t('urlHandler.loadFailed', { error: errorMessage }));
       setMessageType('error');
     } finally {
       setProcessing(false);
@@ -84,7 +84,7 @@ export const URLHandler = () => {
 
   const handleLegacyImport = async (importUrl: string) => {
     setProcessing(true);
-    setMessage('Importing calendar...');
+    setMessage(t('urlHandler.importingCalendar'));
     setMessageType('info');
 
     try {
@@ -96,31 +96,31 @@ export const URLHandler = () => {
       try {
         url = new URL(decodedUrl);
       } catch {
-        throw new Error('Invalid URL format');
+        throw new Error(t('urlHandler.invalidUrl'));
       }
 
       // Only allow HTTP/HTTPS
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new Error('Only HTTP/HTTPS URLs are allowed');
+        throw new Error(t('urlHandler.invalidProtocol'));
       }
 
       // Fetch the calendar data
       const response = await fetch(decodedUrl);
       if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.statusText}`);
+        throw new Error(t('urlHandler.fetchFailed', { error: response.statusText }));
       }
 
       const jsonString = await response.text();
       const data = JSON.parse(jsonString) as { courses?: unknown };
       if (!Array.isArray(data.courses)) {
-        throw new Error('Invalid calendar data format');
+        throw new Error(t('urlHandler.invalidCalendarData'));
       }
 
       setPendingImport(jsonString);
       setMessage(null);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setMessage(`Import failed: ${errorMessage}`);
+      setMessage(t('urlHandler.importFailed', { error: errorMessage }));
       setMessageType('error');
     } finally {
       setProcessing(false);
@@ -131,7 +131,7 @@ export const URLHandler = () => {
     if (pendingImport) {
       await importData(pendingImport);
       setPendingImport(null);
-      setMessage('Calendar imported successfully!');
+      setMessage(t('urlHandler.importSucceeded'));
       setMessageType('success');
       setTimeout(() => setMessage(null), 3000);
     }
@@ -161,7 +161,7 @@ export const URLHandler = () => {
           <button
             className="url-handler-close"
             onClick={() => setMessage(null)}
-            aria-label="Close"
+            aria-label={t('share.close')}
           >
             ×
           </button>

@@ -52,6 +52,7 @@
 }
 
 .calendrier-title {
+  margin: 0;
   font-size: var(--pf-t--global--font--size--heading--h1);
   font-weight: var(--pf-t--global--font--weight--heading--default);
   color: var(--pf-t--global--text--color--regular);
@@ -63,6 +64,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.calendrier-file-input {
+  display: none;
 }
 
 .calendrier-title-input {
