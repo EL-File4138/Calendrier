@@ -14,6 +14,8 @@ import {
   Env,
 } from './types';
 
+const MAX_DO_JSON_BODY_BYTES = 272 * 1024;
+
 interface InitializeRequest {
   calendarId: string;
   ownerId: string;
@@ -35,6 +37,46 @@ interface ListPrivilegesRequest {
 
 interface DestroyRequest {
   requesterId: string;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function hasString(value: Record<string, unknown>, key: string): value is Record<string, string> {
+  return typeof value[key] === 'string' && value[key].trim().length > 0;
+}
+
+function isValidPrivilegeLevel(value: string): value is PrivilegeLevel {
+  return ['read', 'write', 'owner'].includes(value);
+}
+
+function isCalendarDataValid(data: unknown): data is CalendarData {
+  return isObject(data)
+    && Array.isArray(data.courses)
+    && new TextEncoder().encode(JSON.stringify(data)).length <= MAX_DO_JSON_BODY_BYTES;
+}
+
+async function readJsonObject(request: Request): Promise<Record<string, unknown> | Response> {
+  const contentLength = request.headers.get('Content-Length');
+  if (contentLength && Number(contentLength) > MAX_DO_JSON_BODY_BYTES) {
+    return Response.json({ success: false, message: 'Request body is too large' }, { status: 413 });
+  }
+
+  try {
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > MAX_DO_JSON_BODY_BYTES) {
+      return Response.json({ success: false, message: 'Request body is too large' }, { status: 413 });
+    }
+
+    const value = JSON.parse(text) as unknown;
+    if (!isObject(value)) {
+      return Response.json({ success: false, message: 'Request body must be a JSON object' }, { status: 400 });
+    }
+    return value;
+  } catch {
+    return Response.json({ success: false, message: 'Invalid JSON in request body' }, { status: 400 });
+  }
 }
 
 /**
@@ -304,7 +346,7 @@ export class CalendarDO {
 
           return {
             success: true,
-            message: `Ownership transferred to user ${newOwner.userId.substring(0, 8)}...`,
+            message: 'Ownership transferred to another user',
             ownershipTransferred: true,
             newOwnerId: newOwner.userId,
           };
@@ -487,52 +529,102 @@ export class CalendarDO {
 
     // HTTP API endpoints
     if (request.method === 'POST') {
-      const body = await request.json() as unknown;
+      try {
+        const body = await readJsonObject(request);
+        if (body instanceof Response) return body;
 
-      switch (path) {
-        case '/initialize':
-          {
-            const init = body as InitializeRequest;
-            await this.initialize(init.calendarId, init.ownerId, init.data);
+        switch (path) {
+          case '/initialize':
+            {
+              if (!hasString(body, 'calendarId') || !hasString(body, 'ownerId') || !isCalendarDataValid(body.data)) {
+                return Response.json({ success: false, message: 'Missing or invalid initialize request' }, { status: 400 });
+              }
+              const init: InitializeRequest = {
+                calendarId: body.calendarId,
+                ownerId: body.ownerId,
+                data: body.data,
+              };
+              await this.initialize(init.calendarId, init.ownerId, init.data);
+            }
+            return Response.json({ success: true });
+
+          case '/read': {
+            if (body.userId !== undefined && typeof body.userId !== 'string') {
+              return Response.json({ success: false, message: 'Missing or invalid read request' }, { status: 400 });
+            }
+            const readRequest: ReadRequest = { userId: body.userId };
+            const readResult = await this.read(readRequest.userId);
+            return Response.json(readResult);
           }
-          return Response.json({ success: true });
 
-        case '/read': {
-          const readRequest = body as ReadRequest;
-          const readResult = await this.read(readRequest.userId);
-          return Response.json(readResult);
+          case '/write': {
+            if (!hasString(body, 'calendarId') || !hasString(body, 'userId') || !isCalendarDataValid(body.data) || typeof body.version !== 'number') {
+              return Response.json({ success: false, message: 'Missing or invalid write request' }, { status: 400 });
+            }
+            const writeResult = await this.write({
+              calendarId: body.calendarId,
+              userId: body.userId,
+              data: body.data,
+              version: body.version,
+            });
+            return Response.json(writeResult);
+          }
+
+          case '/grant': {
+            if (!hasString(body, 'calendarId') || !hasString(body, 'granterId') || !hasString(body, 'targetUserId') || !hasString(body, 'level') || !isValidPrivilegeLevel(body.level)) {
+              return Response.json({ success: false, message: 'Missing or invalid grant request' }, { status: 400 });
+            }
+            const grantRequest: GrantPrivilegeRequest = {
+              calendarId: body.calendarId,
+              granterId: body.granterId,
+              targetUserId: body.targetUserId,
+              level: body.level,
+            };
+            const grantResult = await this.grantPrivilege(grantRequest);
+            return Response.json(grantResult);
+          }
+
+          case '/revoke': {
+            if (!hasString(body, 'granterId') || !hasString(body, 'targetUserId')) {
+              return Response.json({ success: false, message: 'Missing or invalid revoke request' }, { status: 400 });
+            }
+            const revokeRequest: RevokeRequest = {
+              granterId: body.granterId,
+              targetUserId: body.targetUserId,
+            };
+            const revokeResult = await this.revokePrivilege(revokeRequest.granterId, revokeRequest.targetUserId);
+            return Response.json(revokeResult);
+          }
+
+          case '/listPrivileges': {
+            if (!hasString(body, 'requesterId')) {
+              return Response.json({ success: false, message: 'Missing or invalid list privileges request' }, { status: 400 });
+            }
+            const listRequest: ListPrivilegesRequest = { requesterId: body.requesterId };
+            const listResult = await this.listPrivileges(listRequest.requesterId);
+            return Response.json(listResult);
+          }
+
+          case '/destroy': {
+            if (!hasString(body, 'requesterId')) {
+              return Response.json({ success: false, message: 'Missing or invalid destroy request' }, { status: 400 });
+            }
+            const destroyRequest: DestroyRequest = { requesterId: body.requesterId };
+            const destroyResult = await this.destroy(destroyRequest.requesterId);
+            return Response.json(destroyResult);
+          }
+
+          default:
+            return new Response('Not found', { status: 404 });
         }
-
-        case '/write': {
-          const writeResult = await this.write(body as WriteCalendarRequest);
-          return Response.json(writeResult);
-        }
-
-        case '/grant': {
-          const grantResult = await this.grantPrivilege(body as GrantPrivilegeRequest);
-          return Response.json(grantResult);
-        }
-
-        case '/revoke': {
-          const revokeRequest = body as RevokeRequest;
-          const revokeResult = await this.revokePrivilege(revokeRequest.granterId, revokeRequest.targetUserId);
-          return Response.json(revokeResult);
-        }
-
-        case '/listPrivileges': {
-          const listRequest = body as ListPrivilegesRequest;
-          const listResult = await this.listPrivileges(listRequest.requesterId);
-          return Response.json(listResult);
-        }
-
-        case '/destroy': {
-          const destroyRequest = body as DestroyRequest;
-          const destroyResult = await this.destroy(destroyRequest.requesterId);
-          return Response.json(destroyResult);
-        }
-
-        default:
-          return new Response('Not found', { status: 404 });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Internal error';
+        const status = message.toLowerCase().includes('not found')
+          ? 404
+          : message.toLowerCase().includes('privilege')
+            ? 403
+            : 500;
+        return Response.json({ success: false, message }, { status });
       }
     }
 

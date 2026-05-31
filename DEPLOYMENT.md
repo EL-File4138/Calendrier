@@ -7,7 +7,7 @@ This document provides procedures for deploying Calendrier to production.
 **Required:**
 - Node.js 18+ and npm
 - Cloudflare account (for backend)
-- Wrangler CLI: `npm install -g wrangler`
+- Wrangler CLI. The checked local package version is `4.95.0`.
 
 **Optional:**
 - Vercel/Netlify account (for frontend hosting)
@@ -91,6 +91,8 @@ wrangler deploy
 
 Note the deployed worker URL (e.g., `https://calendrier-worker.your-subdomain.workers.dev`).
 
+If Wrangler reports multiple available accounts in non-interactive mode, configure `account_id` in `worker/wrangler.toml` or set `CLOUDFLARE_ACCOUNT_ID` for the target account before deploying.
+
 ### 6. Create Initial Activation Token
 
 Create a token for initial user registration:
@@ -101,7 +103,7 @@ curl -X POST https://your-worker-url.workers.dev/api/admin/token/create \
   -H "Content-Type: application/json" \
   -d '{
     "maxUses": 10,
-    "expiresAt": 1735689600000,
+    "expiresAt": 1893456000000,
     "createdBy": "admin"
   }'
 ```
@@ -193,9 +195,9 @@ Expected response: `{"success":true,"token":"...","createdAt":...}`
 Open your deployed frontend URL in a browser and verify:
 
 1. Application loads without errors
-2. PWA manifest is accessible
-3. Service worker registers
-4. All static assets load via HTTPS
+2. All static assets load via HTTPS
+3. Server-mode account creation accepts a valid activation token
+4. Calendar create/read/write actions work with the returned `sessionToken`
 
 ### Integration Testing
 
@@ -204,9 +206,9 @@ Test the full stack:
 1. Open your frontend in a browser
 2. Click the User Status button
 3. Create account with activation token
-4. Create a calendar
-5. Save to server
-6. Verify calendar syncs
+4. Create a server calendar
+5. Reload the page and verify the calendar is restored from the Worker
+6. Open a second browser session with another registered user, grant access, and verify WebSocket updates
 
 ---
 
@@ -214,10 +216,10 @@ Test the full stack:
 
 ### Update CORS (Optional)
 
-By default, the worker allows all origins. To restrict to your frontend domain, edit `worker/src/index.ts`:
+By default, the Worker allows all origins. To restrict to your frontend domain, edit the `corsHeaders` object in `worker/src/index.ts`:
 
 ```typescript
-headers.set('Access-Control-Allow-Origin', 'https://your-frontend-domain.com');
+'Access-Control-Allow-Origin': 'https://your-frontend-domain.com',
 ```
 
 ### Configure Rate Limiting (Recommended)
@@ -280,7 +282,7 @@ curl -X POST https://your-worker-url.workers.dev/api/admin/token/create \
   -H "Content-Type: application/json" \
   -d '{
     "maxUses": 100,
-    "expiresAt": 1735689600000,
+    "expiresAt": 1893456000000,
     "createdBy": "admin@example.com"
   }'
 ```
@@ -356,6 +358,7 @@ Verify:
 Check:
 - User is registered
 - User has read access to calendar
+- Client sends `Sec-WebSocket-Protocol: calendrier-session.<sessionToken>`
 - Worker supports WebSocket upgrade
 
 ---

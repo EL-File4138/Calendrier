@@ -4,6 +4,44 @@ interface ConsumeRequest {
   token: string;
 }
 
+const MAX_TOKEN_CONSUME_BODY_BYTES = 16 * 1024;
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+async function readJsonObject(request: Request): Promise<Record<string, unknown> | Response> {
+  const contentLength = request.headers.get('Content-Length');
+  if (contentLength && Number(contentLength) > MAX_TOKEN_CONSUME_BODY_BYTES) {
+    return Response.json({ success: false, message: 'Request body is too large' }, { status: 413 });
+  }
+
+  try {
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > MAX_TOKEN_CONSUME_BODY_BYTES) {
+      return Response.json({ success: false, message: 'Request body is too large' }, { status: 413 });
+    }
+
+    const value = JSON.parse(text) as unknown;
+    if (!isObject(value)) {
+      return Response.json({ success: false, message: 'Request body must be a JSON object' }, { status: 400 });
+    }
+    return value;
+  } catch {
+    return Response.json({ success: false, message: 'Invalid JSON in request body' }, { status: 400 });
+  }
+}
+
+function isActivationToken(value: unknown): value is ActivationToken {
+  return isObject(value)
+    && typeof value.token === 'string'
+    && typeof value.createdAt === 'number'
+    && typeof value.usedCount === 'number'
+    && (value.expiresAt === undefined || typeof value.expiresAt === 'number')
+    && (value.maxUses === undefined || typeof value.maxUses === 'number')
+    && (value.createdBy === undefined || typeof value.createdBy === 'string');
+}
+
 export class ActivationTokenDO {
   private operationQueue: Promise<void> = Promise.resolve();
 
@@ -29,10 +67,12 @@ export class ActivationTokenDO {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    const { token } = await request.json() as ConsumeRequest;
-    if (!token) {
+    const parsed = await readJsonObject(request);
+    if (parsed instanceof Response) return parsed;
+    if (typeof parsed.token !== 'string' || parsed.token.trim().length === 0) {
       return Response.json({ success: false, message: 'Missing activation token' }, { status: 400 });
     }
+    const { token }: ConsumeRequest = { token: parsed.token };
 
     return this.withMutex(async () => {
       const tokenStr = await this.env.ACTIVATION_TOKENS.get(`token:${token}`);
@@ -40,7 +80,11 @@ export class ActivationTokenDO {
         return Response.json({ success: false, message: 'Invalid activation token' }, { status: 401 });
       }
 
-      const activationToken: ActivationToken = JSON.parse(tokenStr);
+      const activationTokenJson = JSON.parse(tokenStr) as unknown;
+      if (!isActivationToken(activationTokenJson)) {
+        return Response.json({ success: false, message: 'Activation token record is invalid' }, { status: 500 });
+      }
+      const activationToken = activationTokenJson;
       if (activationToken.expiresAt !== undefined && activationToken.expiresAt < Date.now()) {
         return Response.json({ success: false, message: 'Activation token has expired' }, { status: 401 });
       }

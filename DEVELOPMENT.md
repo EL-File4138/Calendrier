@@ -91,7 +91,7 @@ Create a new user ID and register with activation token in one step.
 **Request:**
 ```json
 {
-  "activationToken": "TEST123",
+  "activationToken": "TEST_ACTIVATION_TOKEN_32_CHARS_MIN",
   "displayName": "John Doe"
 }
 ```
@@ -102,12 +102,16 @@ Create a new user ID and register with activation token in one step.
   "success": true,
   "userId": "uuid-here",
   "createdAt": 1234567890,
+  "sessionToken": "bearer-token-for-subsequent-requests",
   "message": "User created and registered successfully"
 }
 ```
 
+Save both `userId` and `sessionToken`. The session token is required as `Authorization: Bearer <sessionToken>` for subsequent authenticated requests.
+
 **Error Responses:**
-- 400: Invalid or expired activation token
+- 400: Missing activation token or invalid JSON
+- 401: Invalid, expired, or exhausted activation token
 - 500: Internal server error
 
 ---
@@ -151,7 +155,7 @@ Read calendar data.
 
 **Authentication:** Requires `Authorization: Bearer <sessionToken>` and read access.
 
-Pass `calendarId` and optional `userId` as query parameters.
+Pass `calendarId` and `userId` as query parameters.
 
 **Response:**
 ```json
@@ -205,10 +209,10 @@ Send `Authorization: Bearer <sessionToken>`.
 }
 ```
 
-**Error Responses:**
-- 409: Version conflict (stale data)
-- 403: User lacks write access
-- 404: Calendar not found
+**Write failures:**
+- Version conflicts and insufficient privileges currently return HTTP 200 with `success: false`, the current `version`, `updatedAt`, and a `message`.
+- Authentication failures return 401.
+- Malformed requests return 400.
 
 ---
 
@@ -315,7 +319,7 @@ Send `Authorization: Bearer <sessionToken>`.
 **Special Cases:**
 - Owner can revoke any user's access
 - Users can revoke their own access (self-removal)
-- Cannot revoke owner's own privilege
+- If the last owner leaves while other collaborators remain, ownership is transferred to another user; if no other users remain, the user must delete the calendar instead.
 
 ---
 
@@ -330,7 +334,8 @@ Establish WebSocket connection for real-time updates.
 **Connection:**
 ```javascript
 const ws = new WebSocket(
-  'wss://your-worker.workers.dev/api/calendar/abc123/ws?userId=user-uuid'
+  'wss://your-worker.workers.dev/api/calendar/abc123/ws?userId=user-uuid',
+  'calendrier-session.SESSION_TOKEN'
 );
 ```
 
@@ -395,9 +400,9 @@ Content-Type: application/json
 **Request:**
 ```json
 {
-  "token": "CUSTOM_TOKEN",
+  "token": "CUSTOM_ACTIVATION_TOKEN_32_CHARS_MIN",
   "maxUses": 100,
-  "expiresAt": 1735689600000,
+  "expiresAt": 1893456000000,
   "createdBy": "admin@example.com"
 }
 ```
@@ -412,7 +417,7 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "token": "CUSTOM_TOKEN",
+  "token": "CUSTOM_ACTIVATION_TOKEN_32_CHARS_MIN",
   "createdAt": 1234567890
 }
 ```
@@ -425,6 +430,7 @@ Content-Type: application/json
 - `expiresAt` must be future timestamp
 - `maxUses` must be positive integer
 - ADMIN_MASTER_TOKEN must be at least 32 characters
+- Custom activation tokens must be 32-512 bytes when provided; omit `token` to generate a UUID
 
 ---
 
@@ -445,8 +451,7 @@ Revoke (delete) activation token.
 ```json
 {
   "success": true,
-  "message": "Activation token revoked successfully",
-  "token": "TOKEN_TO_REVOKE"
+  "message": "Activation token revoked successfully"
 }
 ```
 
@@ -472,7 +477,7 @@ Each calendar is stored in a separate Durable Object instance.
 
 **Methods:**
 
-**initialize(owner: string, data: CalendarData)**
+**initialize(calendarId: string, ownerId: string, data: CalendarData)**
 - Creates new calendar document
 - Sets owner as initial privilege holder
 - Initializes version to 1
@@ -482,10 +487,10 @@ Each calendar is stored in a separate Durable Object instance.
 - Checks user privileges
 - Returns hasWriteAccess flag
 
-**write(userId: string, data: CalendarData, version: number)**
+**write(request: WriteCalendarRequest)**
 - Updates calendar data
 - Validates version for optimistic locking
-- Updates KV cache
+- Deletes any legacy anonymous-cache entry for the calendar
 - Broadcasts to WebSocket clients
 
 **grantPrivilege(granterId: string, targetUserId: string, level: PrivilegeLevel)**
@@ -499,25 +504,7 @@ Each calendar is stored in a separate Durable Object instance.
 - Users can revoke themselves
 
 **Mutex Implementation:**
-```typescript
-private async withMutex<T>(fn: () => Promise<T>): Promise<T> {
-  while (this.mutex) {
-    await this.mutex;
-  }
-
-  let resolve: () => void;
-  this.mutex = new Promise(r => resolve = r);
-
-  try {
-    return await fn();
-  } finally {
-    resolve!();
-    this.mutex = null;
-  }
-}
-```
-
-This ensures sequential execution of operations, preventing race conditions.
+The implementation uses a promise-chain operation queue to serialize mutating operations. See `worker/src/CalendarDO.ts` for the current implementation.
 
 ---
 
@@ -539,7 +526,7 @@ This ensures sequential execution of operations, preventing race conditions.
 - Key format: `user:{userId}`
 - Value: `User` JSON
 - Also stores calendar associations:
-  - `user:{userId}:calendars` - List of calendar IDs
+  - `user-calendars:{userId}` - List of calendar metadata objects
 
 ---
 
@@ -553,27 +540,11 @@ Prevents concurrent edit conflicts using version numbers.
 3. Client sends write request (version: 5)
 4. Server checks current version
    - If still 5: Accept write, increment to 6
-   - If now 6: Reject with 409 Conflict
+   - If now 6: Return `success: false` with the current version and conflict message
 5. On conflict, client reloads and retries
 
 **Implementation:**
-```typescript
-async write(userId: string, data: CalendarData, version: number) {
-  if (version !== this.doc.version) {
-    throw new Error('Version conflict');
-  }
-
-  this.doc.data = data;
-  this.doc.version++;
-  this.doc.updatedAt = Date.now();
-
-  await this.saveState();
-  await this.updateCache();
-  this.broadcastUpdate();
-
-  return { version: this.doc.version };
-}
-```
+See `worker/src/CalendarDO.ts` for the current `write(request: WriteCalendarRequest)` implementation.
 
 ---
 
@@ -585,11 +556,10 @@ Prevents timing attacks on admin token authentication:
 
 ```typescript
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  const length = Math.max(a.length, b.length);
+  let result = a.length === b.length ? 0 : 1;
+  for (let i = 0; i < length; i++) {
+    result |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
   }
   return result === 0;
 }
@@ -644,19 +614,6 @@ if (body.expiresAt && body.expiresAt <= Date.now()) {
 
 ## Testing Procedures
 
-### Create Test User
-
-```bash
-curl -X POST http://localhost:8787/api/user/create \
-  -H "Content-Type: application/json" \
-  -d '{
-    "activationToken": "TEST123",
-    "displayName": "Test User"
-  }'
-```
-
-Save the returned `userId`.
-
 ### Create Activation Token
 
 ```bash
@@ -664,16 +621,32 @@ curl -X POST http://localhost:8787/api/admin/token/create \
   -H "Authorization: Bearer your-dev-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "token": "TEST123",
+    "token": "TEST_ACTIVATION_TOKEN_32_CHARS_MIN",
     "maxUses": 100
   }'
 ```
+
+### Create Test User
+
+Use the activation token from the previous step.
+
+```bash
+curl -X POST http://localhost:8787/api/user/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "activationToken": "TEST_ACTIVATION_TOKEN_32_CHARS_MIN",
+    "displayName": "Test User"
+  }'
+```
+
+Save the returned `userId` and `sessionToken`.
 
 ### Create Calendar
 
 ```bash
 curl -X POST http://localhost:8787/api/calendar/create \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
   -d '{
     "userId": "YOUR_USER_ID",
     "data": {
@@ -692,12 +665,8 @@ Save the returned `calendarId`.
 ### Read Calendar
 
 ```bash
-curl -X POST http://localhost:8787/api/calendar/read \
-  -H "Content-Type: application/json" \
-  -d '{
-    "calendarId": "YOUR_CALENDAR_ID",
-    "userId": "YOUR_USER_ID"
-  }'
+curl -X GET "http://localhost:8787/api/calendar/read?calendarId=YOUR_CALENDAR_ID&userId=YOUR_USER_ID" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 ```
 
 ### Grant Access
@@ -705,6 +674,7 @@ curl -X POST http://localhost:8787/api/calendar/read \
 ```bash
 curl -X POST http://localhost:8787/api/privilege/grant \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer OWNER_SESSION_TOKEN" \
   -d '{
     "calendarId": "YOUR_CALENDAR_ID",
     "granterId": "OWNER_USER_ID",
@@ -730,12 +700,14 @@ Create `test-concurrent.sh`:
 #!/bin/bash
 
 USER_ID="your-user-id"
+SESSION_TOKEN="your-session-token"
 CALENDAR_ID="your-calendar-id"
 VERSION=1
 
 for i in {1..10}; do
   curl -X POST http://localhost:8787/api/calendar/write \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SESSION_TOKEN" \
     -d "{
       \"calendarId\": \"$CALENDAR_ID\",
       \"userId\": \"$USER_ID\",
@@ -805,8 +777,8 @@ Edit `worker/src/CalendarDO.ts`:
 async newMethod(param: string): Promise<Result> {
   return this.withMutex(async () => {
     // Implementation with mutex protection
-    this.doc.someField = param;
-    await this.saveState();
+    this.document.someField = param;
+    await this.state.storage.put('document', this.document);
     return { success: true };
   });
 }

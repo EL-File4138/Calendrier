@@ -12,6 +12,7 @@ import {
   ActivationToken,
   Privilege,
   PrivilegeLevel,
+  CalendarData,
 } from './types';
 
 interface RevokePrivilegeRequest {
@@ -43,7 +44,19 @@ interface DeleteCalendarResponse {
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_CALENDAR_DATA_BYTES = 256 * 1024;
+const MAX_JSON_BODY_BYTES = MAX_CALENDAR_DATA_BYTES + 16 * 1024;
+const MAX_OPTIONAL_LABEL_BYTES = 256;
+const MIN_CUSTOM_ACTIVATION_TOKEN_LENGTH = 32;
+const MAX_CUSTOM_ACTIVATION_TOKEN_BYTES = 512;
 const VALID_PRIVILEGE_LEVELS: PrivilegeLevel[] = ['read', 'write', 'owner'];
+
+interface UserCalendarListEntry {
+  id: string;
+  title: string;
+  privilegeLevel: PrivilegeLevel;
+  createdAt: number;
+  updatedAt?: number;
+}
 
 export { CalendarDO, ActivationTokenDO };
 
@@ -147,15 +160,69 @@ function isCalendarDataSizeValid(data: unknown): boolean {
   return new TextEncoder().encode(JSON.stringify(data)).length <= MAX_CALENDAR_DATA_BYTES;
 }
 
-async function readJsonObject(request: Request): Promise<Record<string, unknown> | Response> {
+function isCalendarDataValid(data: unknown): data is CalendarData {
+  return isObject(data) && Array.isArray(data.courses) && isCalendarDataSizeValid(data);
+}
+
+function optionalString(value: unknown, maxBytes = MAX_OPTIONAL_LABEL_BYTES): string | undefined | Response {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') {
+    return Response.json({ error: 'Optional text fields must be strings' }, { status: 400 });
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (new TextEncoder().encode(trimmed).length > maxBytes) {
+    return Response.json({ error: 'Optional text field is too large' }, { status: 413 });
+  }
+  return trimmed;
+}
+
+function requireMethod(request: Request, method: string): Response | null {
+  if (request.method !== method) {
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  }
+  return null;
+}
+
+async function readJsonObject(request: Request, maxBytes = MAX_JSON_BODY_BYTES): Promise<Record<string, unknown> | Response> {
+  const contentLength = request.headers.get('Content-Length');
+  if (contentLength && Number(contentLength) > maxBytes) {
+    return Response.json({ error: 'Request body is too large' }, { status: 413 });
+  }
+
   try {
-    const value = await request.json();
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > maxBytes) {
+      return Response.json({ error: 'Request body is too large' }, { status: 413 });
+    }
+
+    const value = JSON.parse(text) as unknown;
     if (!isObject(value)) {
       return Response.json({ error: 'Request body must be a JSON object' }, { status: 400 });
     }
     return value;
   } catch {
     return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+  }
+}
+
+function parseUserCalendars(value: string | null): UserCalendarListEntry[] {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is UserCalendarListEntry => {
+      return isObject(entry)
+        && typeof entry.id === 'string'
+        && typeof entry.title === 'string'
+        && typeof entry.privilegeLevel === 'string'
+        && isValidPrivilegeLevel(entry.privilegeLevel)
+        && typeof entry.createdAt === 'number'
+        && (entry.updatedAt === undefined || typeof entry.updatedAt === 'number');
+    });
+  } catch {
+    return [];
   }
 }
 
@@ -250,12 +317,20 @@ export default {
  * Create a new user with activation token (registered immediately)
  */
 async function handleCreateUser(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'activationToken')) {
     return Response.json({ success: false, message: 'Missing activation token' }, { status: 400 });
   }
-  const body = parsed as { displayName?: string; activationToken: string };
+  const displayName = optionalString(parsed.displayName);
+  if (displayName instanceof Response) return displayName;
+  const body = {
+    activationToken: parsed.activationToken.trim(),
+    displayName,
+  };
 
   const tokenId = env.ACTIVATION_TOKEN_DO.idFromName(body.activationToken);
   const tokenStub = env.ACTIVATION_TOKEN_DO.get(tokenId);
@@ -293,6 +368,9 @@ async function handleCreateUser(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleLogout(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'userId')) {
@@ -309,12 +387,18 @@ async function handleLogout(request: Request, env: Env): Promise<Response> {
  * Create a new calendar
  */
 async function handleCreateCalendar(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
-  if (!hasString(parsed, 'userId') || !isObject(parsed.data) || !isCalendarDataSizeValid(parsed.data)) {
+  if (!hasString(parsed, 'userId') || !isCalendarDataValid(parsed.data)) {
     return Response.json({ error: 'Missing or invalid calendar create request' }, { status: 400 });
   }
-  const body = parsed as unknown as CreateCalendarRequest;
+  const body: CreateCalendarRequest = {
+    userId: parsed.userId,
+    data: parsed.data,
+  };
 
   const authError = await verifyUserSession(request, env, body.userId);
   if (authError) return authError;
@@ -327,7 +411,7 @@ async function handleCreateCalendar(request: Request, env: Env): Promise<Respons
   const stub = env.CALENDAR_DO.get(id);
 
   // Initialize the calendar
-  await stub.fetch('https://do/initialize', {
+  const initResponse = await stub.fetch('https://do/initialize', {
     method: 'POST',
     body: JSON.stringify({
       calendarId,
@@ -335,11 +419,14 @@ async function handleCreateCalendar(request: Request, env: Env): Promise<Respons
       data: body.data,
     }),
   });
+  if (!initResponse.ok) {
+    return Response.json({ error: 'Failed to initialize calendar' }, { status: 500 });
+  }
 
   // Store calendar reference for the user
   const userCalendarsKey = `user-calendars:${body.userId}`;
   const existingCalendars = await env.USERS.get(userCalendarsKey);
-  const calendars = existingCalendars ? JSON.parse(existingCalendars) : [];
+  const calendars = parseUserCalendars(existingCalendars);
   calendars.push({
     id: calendarId,
     title: body.data.title || 'Untitled Calendar',
@@ -357,9 +444,13 @@ async function handleCreateCalendar(request: Request, env: Env): Promise<Respons
 }
 
 /**
- * Read a calendar (authenticated or anonymous)
+ * Read a calendar with an authenticated user session.
  */
 async function handleReadCalendar(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  }
+
   const url = new URL(request.url);
   const calendarId = url.searchParams.get('calendarId');
   const userId = url.searchParams.get('userId');
@@ -390,12 +481,20 @@ async function handleReadCalendar(request: Request, env: Env): Promise<Response>
  * Write to a calendar (authenticated only)
  */
 async function handleWriteCalendar(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
-  if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'userId') || !isObject(parsed.data) || !isCalendarDataSizeValid(parsed.data) || typeof parsed.version !== 'number') {
+  if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'userId') || !isCalendarDataValid(parsed.data) || typeof parsed.version !== 'number') {
     return Response.json({ error: 'Missing or invalid calendar write request' }, { status: 400 });
   }
-  const body = parsed as unknown as WriteCalendarRequest;
+  const body: WriteCalendarRequest = {
+    calendarId: parsed.calendarId,
+    userId: parsed.userId,
+    data: parsed.data,
+    version: parsed.version,
+  };
 
   const authError = await verifyUserSession(request, env, body.userId);
   if (authError) return authError;
@@ -416,6 +515,9 @@ async function handleWriteCalendar(request: Request, env: Env): Promise<Response
  * Grant privilege to another user
  */
 async function handleGrantPrivilege(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'granterId') || !hasString(parsed, 'targetUserId') || !hasString(parsed, 'level')) {
@@ -424,7 +526,12 @@ async function handleGrantPrivilege(request: Request, env: Env): Promise<Respons
   if (!isValidPrivilegeLevel(parsed.level)) {
     return Response.json({ error: 'Invalid privilege level' }, { status: 400 });
   }
-  const body = parsed as unknown as GrantPrivilegeRequest;
+  const body: GrantPrivilegeRequest = {
+    calendarId: parsed.calendarId,
+    granterId: parsed.granterId,
+    targetUserId: parsed.targetUserId,
+    level: parsed.level,
+  };
 
   const authError = await verifyUserSession(request, env, body.granterId);
   if (authError) return authError;
@@ -453,7 +560,7 @@ async function handleGrantPrivilege(request: Request, env: Env): Promise<Respons
     if (result.success) {
       const userCalendarsKey = `user-calendars:${body.targetUserId}`;
       const existingCalendars = await env.USERS.get(userCalendarsKey);
-      const calendars = existingCalendars ? JSON.parse(existingCalendars) : [];
+      const calendars = parseUserCalendars(existingCalendars);
 
       // Check if calendar already in list
       const existingIndex = calendars.findIndex((c: { id: string }) => c.id === body.calendarId);
@@ -470,11 +577,13 @@ async function handleGrantPrivilege(request: Request, env: Env): Promise<Respons
           method: 'POST',
           body: JSON.stringify({ userId: body.targetUserId }),
         });
-        const readData: ReadCalendarResponse = await readResponse.json();
+        const readData = readResponse.ok
+          ? await readResponse.json() as ReadCalendarResponse
+          : undefined;
 
         calendars.push({
           id: body.calendarId,
-          title: readData.data.title || 'Untitled Calendar',
+          title: readData?.data.title || 'Untitled Calendar',
           privilegeLevel: body.level,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -491,12 +600,19 @@ async function handleGrantPrivilege(request: Request, env: Env): Promise<Respons
  * Revoke privilege from a user
  */
 async function handleRevokePrivilege(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'granterId') || !hasString(parsed, 'targetUserId')) {
     return Response.json({ error: 'Missing or invalid privilege revoke request' }, { status: 400 });
   }
-  const body = parsed as unknown as RevokePrivilegeRequest;
+  const body: RevokePrivilegeRequest = {
+    calendarId: parsed.calendarId,
+    granterId: parsed.granterId,
+    targetUserId: parsed.targetUserId,
+  };
 
   const authError = await verifyUserSession(request, env, body.granterId);
   if (authError) return authError;
@@ -520,7 +636,7 @@ async function handleRevokePrivilege(request: Request, env: Env): Promise<Respon
       const userCalendarsKey = `user-calendars:${body.targetUserId}`;
       const existingCalendars = await env.USERS.get(userCalendarsKey);
       if (existingCalendars) {
-        const calendars = JSON.parse(existingCalendars);
+        const calendars = parseUserCalendars(existingCalendars);
         const filtered = calendars.filter((c: { id: string }) => c.id !== body.calendarId);
         await env.USERS.put(userCalendarsKey, JSON.stringify(filtered));
       }
@@ -534,12 +650,18 @@ async function handleRevokePrivilege(request: Request, env: Env): Promise<Respon
  * List privileges for a calendar
  */
 async function handleListPrivileges(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'requesterId')) {
     return Response.json({ error: 'Missing or invalid privilege list request' }, { status: 400 });
   }
-  const body = parsed as unknown as ListPrivilegesRequest;
+  const body: ListPrivilegesRequest = {
+    calendarId: parsed.calendarId,
+    requesterId: parsed.requesterId,
+  };
 
   const authError = await verifyUserSession(request, env, body.requesterId);
   if (authError) return authError;
@@ -560,9 +682,19 @@ async function handleListPrivileges(request: Request, env: Env): Promise<Respons
  * Handle WebSocket connection
  */
 async function handleWebSocket(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+  if (request.headers.get('Upgrade') !== 'websocket') {
+    return new Response('Expected WebSocket', { status: 426 });
+  }
+
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const calendarId = pathParts[pathParts.length - 2]; // /api/calendar/{id}/ws
+  if (!calendarId) {
+    return new Response('Missing calendarId', { status: 400 });
+  }
 
   const userId = url.searchParams.get('userId');
   const token = getWebSocketToken(request);
@@ -574,13 +706,18 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
   if (!token || !expectedHash || !constantTimeCompare(await sha256Hex(token), expectedHash)) {
     return new Response('Invalid session token', { status: 401 });
   }
+  await env.USERS.put(`session:${userId}`, expectedHash, { expirationTtl: SESSION_TTL_SECONDS });
 
   // Forward to Durable Object
   const id = env.CALENDAR_DO.idFromName(calendarId);
   const stub = env.CALENDAR_DO.get(id);
 
-  return stub.fetch(`https://do/ws?userId=${userId}`, {
-    headers: request.headers,
+  const headers = new Headers({ Upgrade: 'websocket' });
+  const protocolHeader = request.headers.get('Sec-WebSocket-Protocol');
+  if (protocolHeader) headers.set('Sec-WebSocket-Protocol', protocolHeader);
+
+  return stub.fetch(`https://do/ws?userId=${encodeURIComponent(userId)}`, {
+    headers,
   });
 }
 
@@ -589,6 +726,9 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
  * Protected with ADMIN_MASTER_TOKEN authentication
  */
 async function handleCreateActivationToken(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   // Verify admin authentication
   if (!verifyAdminToken(request, env)) {
     console.warn('Unauthorized admin token creation attempt');
@@ -598,15 +738,9 @@ async function handleCreateActivationToken(request: Request, env: Env): Promise<
     );
   }
 
-  let body: { expiresAt?: number; maxUses?: number; token?: string; createdBy?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json(
-      { success: false, error: 'Invalid JSON in request body' },
-      { status: 400 }
-    );
-  }
+  const parsed = await readJsonObject(request, 16 * 1024);
+  if (parsed instanceof Response) return parsed;
+  const body = parsed as { expiresAt?: unknown; maxUses?: unknown; token?: unknown; createdBy?: unknown };
 
   // Validate input
   if (body.expiresAt !== undefined && (typeof body.expiresAt !== 'number' || body.expiresAt <= Date.now())) {
@@ -623,14 +757,33 @@ async function handleCreateActivationToken(request: Request, env: Env): Promise<
     );
   }
 
-  if (body.token && (typeof body.token !== 'string' || body.token.length < 8)) {
+  if (body.token !== undefined && typeof body.token !== 'string') {
     return Response.json(
-      { success: false, error: 'Custom token must be at least 8 characters' },
+      { success: false, error: 'Custom token must be a string' },
       { status: 400 }
     );
   }
 
-  const token = body.token || crypto.randomUUID();
+  const customToken = body.token?.trim();
+  if (customToken !== undefined) {
+    const tokenBytes = new TextEncoder().encode(customToken).length;
+    if (customToken.length < MIN_CUSTOM_ACTIVATION_TOKEN_LENGTH || tokenBytes > MAX_CUSTOM_ACTIVATION_TOKEN_BYTES) {
+      return Response.json(
+        { success: false, error: `Custom token must be ${MIN_CUSTOM_ACTIVATION_TOKEN_LENGTH}-${MAX_CUSTOM_ACTIVATION_TOKEN_BYTES} bytes` },
+        { status: 400 }
+      );
+    }
+  }
+
+  const createdBy = optionalString(body.createdBy);
+  if (createdBy instanceof Response) {
+    return Response.json(
+      { success: false, error: 'createdBy must be a string no larger than 256 bytes' },
+      { status: createdBy.status }
+    );
+  }
+
+  const token = customToken || crypto.randomUUID();
   const now = Date.now();
 
   const activationToken: ActivationToken = {
@@ -639,13 +792,12 @@ async function handleCreateActivationToken(request: Request, env: Env): Promise<
     expiresAt: body.expiresAt,
     maxUses: body.maxUses,
     usedCount: 0,
-    createdBy: body.createdBy,
+    createdBy,
   };
 
   await env.ACTIVATION_TOKENS.put(`token:${token}`, JSON.stringify(activationToken));
 
-  // Log admin action for audit trail
-  console.log(`[ADMIN] Activation token created: ${token.substring(0, 8)}... by ${body.createdBy || 'unknown'}`);
+  console.log(JSON.stringify({ message: 'activation token created', createdBy: createdBy || 'unknown' }));
 
   return Response.json({
     success: true,
@@ -659,6 +811,9 @@ async function handleCreateActivationToken(request: Request, env: Env): Promise<
  * Protected with ADMIN_MASTER_TOKEN authentication
  */
 async function handleRevokeActivationToken(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   // Verify admin authentication
   if (!verifyAdminToken(request, env)) {
     console.warn('Unauthorized admin token revocation attempt');
@@ -668,25 +823,20 @@ async function handleRevokeActivationToken(request: Request, env: Env): Promise<
     );
   }
 
-  let body: { token?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json(
-      { success: false, error: 'Invalid JSON in request body' },
-      { status: 400 }
-    );
-  }
+  const parsed = await readJsonObject(request, 16 * 1024);
+  if (parsed instanceof Response) return parsed;
+  const body = parsed as { token?: unknown };
 
-  if (!body.token || typeof body.token !== 'string') {
+  if (!body.token || typeof body.token !== 'string' || body.token.trim().length === 0) {
     return Response.json(
       { success: false, error: 'Missing or invalid token parameter' },
       { status: 400 }
     );
   }
+  const token = body.token.trim();
 
   // Check if token exists
-  const tokenStr = await env.ACTIVATION_TOKENS.get(`token:${body.token}`);
+  const tokenStr = await env.ACTIVATION_TOKENS.get(`token:${token}`);
   if (!tokenStr) {
     return Response.json(
       { success: false, error: 'Token not found' },
@@ -695,10 +845,9 @@ async function handleRevokeActivationToken(request: Request, env: Env): Promise<
   }
 
   // Delete the token
-  await env.ACTIVATION_TOKENS.delete(`token:${body.token}`);
+  await env.ACTIVATION_TOKENS.delete(`token:${token}`);
 
-  // Log admin action for audit trail
-  console.log(`[ADMIN] Activation token revoked: ${body.token.substring(0, 8)}...`);
+  console.log(JSON.stringify({ message: 'activation token revoked' }));
 
   return Response.json({
     success: true,
@@ -713,12 +862,18 @@ async function handleRevokeActivationToken(request: Request, env: Env): Promise<
  * - Deletes DO storage and KV cache
  */
 async function handleDeleteCalendar(request: Request, env: Env): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+
   const parsed = await readJsonObject(request);
   if (parsed instanceof Response) return parsed;
   if (!hasString(parsed, 'calendarId') || !hasString(parsed, 'requesterId')) {
     return Response.json({ error: 'Missing or invalid calendar delete request' }, { status: 400 });
   }
-  const body = parsed as unknown as DeleteCalendarRequest;
+  const body: DeleteCalendarRequest = {
+    calendarId: parsed.calendarId,
+    requesterId: parsed.requesterId,
+  };
 
   const authError = await verifyUserSession(request, env, body.requesterId);
   if (authError) return authError;
@@ -757,7 +912,7 @@ async function handleDeleteCalendar(request: Request, env: Env): Promise<Respons
         const userCalendarsKey = `user-calendars:${userId}`;
         const existingCalendars = await env.USERS.get(userCalendarsKey);
         if (existingCalendars) {
-          const calendars = JSON.parse(existingCalendars);
+          const calendars = parseUserCalendars(existingCalendars);
           const filtered = calendars.filter((c: { id: string }) => c.id !== body.calendarId);
           await env.USERS.put(userCalendarsKey, JSON.stringify(filtered));
         }

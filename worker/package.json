@@ -11,13 +11,18 @@
     "test": "npm run typecheck && npm run build",
     "tail": "wrangler tail"
   },
-  "keywords": ["cloudflare", "worker", "durable-objects", "calendar"],
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "durable-objects",
+    "calendar"
+  ],
   "author": "",
   "license": "Unlicense",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.28.0",
     "typescript": "^5.7.2",
-    "wrangler": "^3.94.0"
+    "wrangler": "^4.95.0"
   }
 }

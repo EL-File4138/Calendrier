@@ -1,330 +1,85 @@
 # Calendrier Worker
 
-Cloudflare Worker backend for Calendrier multi-user calendar application.
+Cloudflare Worker backend for Calendrier multi-user calendar synchronization.
 
 ## Features
 
-- **Durable Objects** for document storage with mutex-based concurrency control
-- **KV Storage** for caching, user data, and activation tokens
-- **WebSocket Support** for real-time collaboration
-- **Privilege-based Access Control** (owner, write, read)
-- **Optimistic Locking** to prevent concurrent edit conflicts
+- Durable Objects for per-calendar document authority and WebSocket coordination.
+- KV Storage for activation tokens, users, sessions, and user calendar lists.
+- Session-token authenticated calendar CRUD and privilege management.
+- WebSocket updates authenticated with `Sec-WebSocket-Protocol`.
+- Privilege-based access control: `owner`, `write`, and `read`.
+- Optimistic locking using document versions.
 
 ## Architecture
 
 ### Durable Objects
 
-Each calendar document is stored in a separate Durable Object instance, providing:
-- Strong consistency
-- Automatic geographic distribution
-- Built-in state persistence
-- WebSocket connection handling
+Each calendar document is stored in a separate `CalendarDO` instance keyed by calendar ID. The Durable Object owns document state, privilege checks, optimistic locking, persistence, cache cleanup, and WebSocket broadcasts.
+
+Activation token consumption is serialized through `ActivationTokenDO`, keyed by activation token value, so limited-use tokens cannot be consumed concurrently beyond their configured limit.
 
 ### KV Namespaces
 
-1. **CALENDAR_CACHE**: Stores cached calendar data for anonymous readers
-2. **ACTIVATION_TOKENS**: Stores activation tokens for user registration
-3. **USERS**: Stores user data and calendar associations
+- `CALENDAR_CACHE`: Legacy namespace retained to delete stale anonymous-cache entries on calendar write/delete. New reads require authentication and go directly to Durable Objects.
+- `ACTIVATION_TOKENS`: Stores activation-token records at `token:{token}`.
+- `USERS`: Stores user records, session token hashes, registration markers, and user calendar metadata at `user-calendars:{userId}`.
 
 ## API Endpoints
 
-### Authentication
+All authenticated HTTP endpoints use `Authorization: Bearer <sessionToken>`.
 
-#### POST /api/user/create
-Create a new user ID.
+### User Management
 
-**Request:**
+#### POST `/api/user/create`
+
+Create a registered user using an activation token. The response includes the session token needed for subsequent authenticated requests.
+
+Request:
+
 ```json
 {
-  "displayName": "John Doe"
+  "activationToken": "TEST_ACTIVATION_TOKEN_32_CHARS_MIN",
+  "displayName": "Test User"
 }
 ```
 
-**Response:**
-```json
-{
-  "userId": "uuid",
-  "createdAt": 1234567890
-}
-```
+Response:
 
-#### POST /api/user/register
-Register a user with an activation token.
-
-**Request:**
-```json
-{
-  "userId": "uuid",
-  "activationToken": "WELCOME2024"
-}
-```
-
-**Response:**
 ```json
 {
   "success": true,
-  "message": "User registered successfully"
-}
-```
-
-### Calendar Management
-
-#### POST /api/calendar/create
-Create a new calendar (requires registered user).
-
-**Request:**
-```json
-{
   "userId": "uuid",
-  "data": {
-    "title": "My Calendar",
-    "courses": [],
-    "settings": {}
-  }
+  "createdAt": 1234567890,
+  "sessionToken": "bearer-token",
+  "message": "User created and registered successfully"
 }
 ```
 
-**Response:**
-```json
-{
-  "calendarId": "uuid",
-  "createdAt": 1234567890
-}
-```
+#### POST `/api/user/logout`
 
-#### POST /api/calendar/read
-Read a calendar (authenticated or anonymous).
+Delete the current user's session token.
 
-**Request:**
-```json
-{
-  "calendarId": "uuid",
-  "userId": "uuid"  // Optional
-}
-```
+Request:
 
-**Response:**
-```json
-{
-  "data": { /* CalendarData */ },
-  "version": 1,
-  "hasWriteAccess": true,
-  "updatedAt": 1234567890
-}
-```
-
-#### POST /api/calendar/write
-Write to a calendar (requires write access).
-
-**Request:**
-```json
-{
-  "calendarId": "uuid",
-  "userId": "uuid",
-  "data": { /* CalendarData */ },
-  "version": 1
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "version": 2,
-  "updatedAt": 1234567890
-}
-```
-
-#### POST /api/calendar/list
-List calendars for a user.
-
-**Request:**
 ```json
 {
   "userId": "uuid"
 }
 ```
 
-**Response:**
-```json
-{
-  "calendars": [
-    {
-      "id": "uuid",
-      "title": "My Calendar",
-      "privilegeLevel": "owner",
-      "updatedAt": 1234567890
-    }
-  ]
-}
-```
+### Calendar Management
 
-### Privilege Management
+#### POST `/api/calendar/create`
 
-#### POST /api/privilege/grant
-Grant access to another user (requires owner access).
-
-**Request:**
-```json
-{
-  "calendarId": "uuid",
-  "granterId": "uuid",
-  "targetUserId": "uuid",
-  "level": "write"  // "owner", "write", or "read"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Privilege granted successfully"
-}
-```
-
-#### POST /api/privilege/revoke
-Revoke access from a user (requires owner access).
-
-**Request:**
-```json
-{
-  "calendarId": "uuid",
-  "granterId": "uuid",
-  "targetUserId": "uuid"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Privilege revoked successfully"
-}
-```
-
-### WebSocket
-
-#### GET /api/calendar/{calendarId}/ws?userId={userId}
-Connect to WebSocket for real-time updates.
-
-**Messages:**
-
-Update message:
-```json
-{
-  "type": "update",
-  "calendarId": "uuid",
-  "version": 2,
-  "data": { /* CalendarData */ },
-  "timestamp": 1234567890
-}
-```
-
-Presence message:
-```json
-{
-  "type": "presence",
-  "calendarId": "uuid",
-  "userId": "uuid",
-  "displayName": "John Doe",
-  "action": "join",  // or "leave"
-  "timestamp": 1234567890
-}
-```
-
-### Admin
-
-#### POST /api/admin/token/create
-Create an activation token (should be protected in production).
-
-**Request:**
-```json
-{
-  "token": "WELCOME2024",  // Optional, generates UUID if not provided
-  "maxUses": 100,          // Optional
-  "expiresAt": 1735689600000,  // Optional Unix timestamp
-  "createdBy": "admin"     // Optional
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "token": "WELCOME2024",
-  "createdAt": 1234567890
-}
-```
-
-## Development
-
-### Setup
-
-```bash
-npm install
-```
-
-### Run Locally
-
-```bash
-npm run dev
-```
-
-This starts a local development server at `http://localhost:8787`.
-
-### Deploy
-
-```bash
-npm run deploy
-```
-
-### View Logs
-
-```bash
-npm run tail
-```
-
-## Configuration
-
-Edit `wrangler.toml` to configure:
-- Worker name
-- KV namespace bindings
-- Durable Object bindings
-- Compatibility date
-
-## Testing
-
-### Create a Test User
-
-```bash
-curl -X POST http://localhost:8787/api/user/create \
-  -H "Content-Type: application/json" \
-  -d '{"displayName": "Test User"}'
-```
-
-### Create an Activation Token
-
-```bash
-curl -X POST http://localhost:8787/api/admin/token/create \
-  -H "Content-Type: application/json" \
-  -d '{"token": "TEST123", "maxUses": 10}'
-```
-
-### Register User
-
-```bash
-curl -X POST http://localhost:8787/api/user/register \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "YOUR_USER_ID", "activationToken": "TEST123"}'
-```
-
-### Create a Calendar
+Create a new calendar. Requires a registered user session.
 
 ```bash
 curl -X POST http://localhost:8787/api/calendar/create \
+  -H "Authorization: Bearer SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "YOUR_USER_ID",
+    "userId": "USER_ID",
     "data": {
       "title": "Test Calendar",
       "courses": [],
@@ -333,56 +88,163 @@ curl -X POST http://localhost:8787/api/calendar/create \
   }'
 ```
 
-## Security Notes
+Response:
 
-1. **Admin Endpoint**: The `/api/admin/token/create` endpoint is currently unprotected. In production, add authentication middleware.
-
-2. **Rate Limiting**: Consider implementing rate limiting to prevent abuse.
-
-3. **CORS**: Currently allows all origins (`*`). In production, restrict to your frontend domain.
-
-4. **Input Validation**: Add comprehensive input validation for all endpoints.
-
-## Performance Considerations
-
-### Caching Strategy
-
-- Anonymous readers get cached data from KV (5-minute TTL)
-- Registered users get live data from Durable Objects
-- Cache is updated after each write operation
-
-### Concurrency Control
-
-- Mutex primitive ensures sequential operation execution
-- Optimistic locking prevents concurrent edit conflicts
-- WebSocket broadcasts updates to all connected clients
-
-### Cost Optimization
-
-- Use KV cache to reduce Durable Object requests
-- Implement debouncing on client side to reduce write frequency
-- Monitor usage in Cloudflare Dashboard
-
-## Troubleshooting
-
-### Durable Object Not Found
-
-Ensure migrations are applied:
-```bash
-wrangler deploy
+```json
+{
+  "calendarId": "uuid",
+  "createdAt": 1234567890
+}
 ```
 
-### KV Namespace Errors
+#### GET `/api/calendar/read?calendarId={id}&userId={userId}`
 
-Verify namespace IDs in `wrangler.toml` match your Cloudflare Dashboard.
+Read a calendar. Requires a registered user session and read access. Anonymous reads are not supported.
 
-### WebSocket Connection Issues
+```bash
+curl -X GET "http://localhost:8787/api/calendar/read?calendarId=CALENDAR_ID&userId=USER_ID" \
+  -H "Authorization: Bearer SESSION_TOKEN"
+```
 
-Check that:
-1. User is registered
-2. User has read access to the calendar
-3. CORS headers are correct
+Response:
+
+```json
+{
+  "data": { "title": "Test Calendar", "courses": [] },
+  "version": 1,
+  "hasWriteAccess": true,
+  "updatedAt": 1234567890
+}
+```
+
+#### POST `/api/calendar/write`
+
+Write calendar data. Requires `write` or `owner` access.
+
+```json
+{
+  "calendarId": "uuid",
+  "userId": "uuid",
+  "data": { "title": "Updated Calendar", "courses": [] },
+  "version": 1
+}
+```
+
+Version conflicts currently return HTTP 200 with `success: false`, the current server version, and a conflict message.
+
+#### POST `/api/calendar/delete`
+
+Delete a calendar. Requires owner access. The Worker removes the calendar from user calendar lists, destroys Durable Object storage, deletes legacy cache entries, and closes WebSocket connections.
+
+### Privilege Management
+
+#### POST `/api/privilege/grant`
+
+Grant access to a registered user. Requires owner access.
+
+```json
+{
+  "calendarId": "uuid",
+  "granterId": "owner-user-id",
+  "targetUserId": "target-user-id",
+  "level": "write"
+}
+```
+
+#### POST `/api/privilege/revoke`
+
+Revoke access. Owners can revoke others; users can revoke their own access.
+
+```json
+{
+  "calendarId": "uuid",
+  "granterId": "owner-or-self-user-id",
+  "targetUserId": "target-user-id"
+}
+```
+
+#### POST `/api/privilege/list`
+
+List privileges visible to the requester. Owners see all privileges; non-owners see only their own privilege.
+
+## WebSocket
+
+#### GET `/api/calendar/{calendarId}/ws?userId={userId}`
+
+Connect to calendar updates. Requires a registered session and read access. Pass the session token as a WebSocket subprotocol:
+
+```js
+const ws = new WebSocket(
+  'ws://localhost:8787/api/calendar/CALENDAR_ID/ws?userId=USER_ID',
+  'calendrier-session.SESSION_TOKEN'
+);
+```
+
+Server messages include `update` and `presence` payloads.
+
+## Admin Endpoints
+
+Admin endpoints require `Authorization: Bearer <ADMIN_MASTER_TOKEN>`. The token must be at least 32 characters and should be configured as a Wrangler secret in production.
+
+#### POST `/api/admin/token/create`
+
+```bash
+curl -X POST http://localhost:8787/api/admin/token/create \
+  -H "Authorization: Bearer YOUR_ADMIN_MASTER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"TEST_ACTIVATION_TOKEN_32_CHARS_MIN","maxUses":10}'
+```
+
+#### POST `/api/admin/token/revoke`
+
+```bash
+curl -X POST http://localhost:8787/api/admin/token/revoke \
+  -H "Authorization: Bearer YOUR_ADMIN_MASTER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"TEST_ACTIVATION_TOKEN_32_CHARS_MIN"}'
+```
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+The local Worker runs at `http://localhost:8787`.
+
+Use `.dev.vars` for development secrets:
+
+```env
+ADMIN_MASTER_TOKEN=<at-least-32-characters>
+```
+
+## Configuration
+
+Edit `wrangler.toml` to configure Durable Object bindings, migrations, KV namespace IDs, compatibility settings, and observability.
+
+Installed Wrangler version checked during M2: `4.95.0`. Worker bundling uses `esbuild` `0.28.0`. The config schema includes `build`, `compatibility_flags`, `new_classes`, `new_sqlite_classes`, and `observability`; `build.upload` is deprecated and is not used by this project.
+
+`npm exec -- wrangler deploy --dry-run` succeeds locally with Wrangler 4 and exits before upload.
+
+## Testing Flow
+
+1. Create an activation token with the admin endpoint.
+2. Create a user with `/api/user/create` and save both `userId` and `sessionToken`.
+3. Create a calendar with `/api/calendar/create`.
+4. Read/write using the returned `calendarId`, `userId`, and `sessionToken`.
+5. Create a second user, grant access, verify privilege list/revoke behavior.
+6. Connect WebSocket clients with the `calendrier-session.<token>` subprotocol and verify update messages.
+
+## Security Notes
+
+- Admin endpoints require `ADMIN_MASTER_TOKEN` using a bearer token.
+- Custom activation tokens must be 32-512 bytes; omit `token` to generate a UUID.
+- Session tokens are stored as SHA-256 hashes in KV and refreshed on HTTP authentication.
+- WebSocket session tokens are sent through `Sec-WebSocket-Protocol`, not URL query strings.
+- CORS currently allows all origins. Restrict this before production if a fixed frontend origin is known.
+- Rate limiting is not implemented yet.
 
 ## License
 
-Unlicense (Public Domain)
+Unlicensed.

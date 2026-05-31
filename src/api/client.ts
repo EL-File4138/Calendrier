@@ -11,6 +11,20 @@ import type {
 // Configure your Worker URL here
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787';
 
+async function responseErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json() as unknown;
+    if (body && typeof body === 'object') {
+      const record = body as Record<string, unknown>;
+      if (typeof record.message === 'string') return record.message;
+      if (typeof record.error === 'string') return record.error;
+    }
+  } catch {
+    // Fall back to HTTP status information when the server returns a non-JSON body.
+  }
+  return `${fallback}: ${response.statusText || response.status}`;
+}
+
 export class CalendarAPI {
   private workerUrl: string;
 
@@ -30,8 +44,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to create user: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to create user'));
     }
 
     return response.json();
@@ -45,7 +58,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to log out: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to log out'));
     }
 
     return response.json();
@@ -62,14 +75,14 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to create calendar: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to create calendar'));
     }
 
     return response.json();
   }
 
   /**
-   * Read a calendar (authenticated or anonymous)
+   * Read a calendar with a valid user session.
    */
   async readCalendar(calendarId: string, userId?: string, sessionToken?: string): Promise<ReadCalendarResponse> {
     const params = new URLSearchParams({ calendarId });
@@ -85,7 +98,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to read calendar: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to read calendar'));
     }
 
     return response.json();
@@ -108,7 +121,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to write calendar: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to write calendar'));
     }
 
     return response.json();
@@ -131,7 +144,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to grant privilege: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to grant privilege'));
     }
 
     return response.json();
@@ -153,7 +166,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to revoke privilege: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to revoke privilege'));
     }
 
     return response.json();
@@ -174,7 +187,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to list privileges: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to list privileges'));
     }
 
     return response.json();
@@ -198,7 +211,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete calendar: ${response.statusText}`);
+      throw new Error(await responseErrorMessage(response, 'Failed to delete calendar'));
     }
 
     return response.json();
