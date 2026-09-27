@@ -1,6 +1,7 @@
 name = "calendrier-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+workers_dev = true
 
 # Durable Objects
 [durable_objects]
@@ -11,27 +12,24 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["CalendarDO"]
+new_sqlite_classes = ["CalendarDO"]
 
 [[migrations]]
 tag = "v2"
-new_classes = ["ActivationTokenDO"]
+new_sqlite_classes = ["ActivationTokenDO"]
 
 # KV Namespaces
 [[kv_namespaces]]
 binding = "CALENDAR_CACHE"
-id = "YOUR_CALENDAR_CACHE_KV_ID"
-preview_id = "YOUR_CALENDAR_CACHE_PREVIEW_KV_ID"
+id = "76abf962e52b46e9937ef294e3236a7d"
 
 [[kv_namespaces]]
 binding = "ACTIVATION_TOKENS"
-id = "YOUR_ACTIVATION_TOKENS_KV_ID"
-preview_id = "YOUR_ACTIVATION_TOKENS_PREVIEW_KV_ID"
+id = "68281a0471074e8cb4771a222d3372ca"
 
 [[kv_namespaces]]
 binding = "USERS"
-id = "YOUR_USERS_KV_ID"
-preview_id = "YOUR_USERS_PREVIEW_KV_ID"
+id = "2cf943531ea04cbcb53b3c6f0a3a1a72"
 
 # Secrets
 # Set these using: wrangler secret put <SECRET_NAME>

@@ -1,10 +1,11 @@
-const CACHE_NAME = 'calendrier-v1';
+const CACHE_PREFIX = `calendrier:${self.registration.scope}:`;
+const CACHE_NAME = `${CACHE_PREFIX}0.1.0-rc.1`;
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.png'
-];
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.png'
+].map((path) => new URL(path, self.registration.scope).href);
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
@@ -21,7 +22,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
@@ -32,8 +33,13 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || !url.href.startsWith(self.registration.scope) ||
+      !['document', 'script', 'style', 'font', 'image', 'manifest'].includes(event.request.destination)) {
+    return;
+  }
   event.respondWith(
-    caches.match(event.request)
+    caches.open(CACHE_NAME).then((cache) => cache.match(event.request))
       .then((response) => {
         // Cache hit - return response
         if (response) {
@@ -49,10 +55,10 @@ self.addEventListener('fetch', (event) => {
             // Clone the response
             const responseToCache = response.clone();
 
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+            event.waitUntil(caches.open(CACHE_NAME)
+               .then((cache) => {
+                return cache.put(event.request, responseToCache);
+              }));
 
             return response;
           }

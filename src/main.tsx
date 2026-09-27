@@ -12,7 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary.tsx'
 // modules, which can load separate React runtimes in the same page.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`)
       .catch((error) => {
         console.error('Service Worker registration failed:', error);
       });
@@ -22,7 +22,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   // cannot continue serving the cached application shell.
   window.addEventListener('load', () => {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
+      const scope = new URL(import.meta.env.BASE_URL, window.location.origin).href;
+      registrations.filter((registration) => registration.scope === scope)
+        .forEach((registration) => registration.unregister());
     });
   });
 }
