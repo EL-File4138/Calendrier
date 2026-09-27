@@ -21,6 +21,8 @@ import {
   TrashIcon,
 } from '@patternfly/react-icons';
 import { useCalendar } from '../context/CalendarContext';
+import { MAX_CALENDAR_IMPORT_BYTES } from '../context/CalendarContext';
+import { mapICSToCalendarData, parseICS } from '../utils/icsParser';
 import ConfirmDialog from './ConfirmDialog';
 import InlineAlert from './InlineAlert';
 import ShareDialog from './ShareDialog';
@@ -56,10 +58,10 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const [dialog, setDialog] = useState<DialogType>(null);
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<{ message: string; variant: 'danger' | 'success' } | null>(null);
 
-  const showAlert = (message: string) => {
-    setAlertMessage(message);
+  const showAlert = (message: string, variant: 'danger' | 'success' = 'danger') => {
+    setAlertMessage({ message, variant });
   };
 
   const waitForPaint = () => new Promise<void>((resolve) => {
@@ -105,11 +107,31 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_CALENDAR_IMPORT_BYTES) {
+        showAlert(t('errors.importTooLarge'));
+        e.target.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
-        const jsonString = event.target?.result as string;
-        pendingImportRef.current = jsonString;
-        setDialog('import-warning');
+        const content = event.target?.result as string;
+        if (new TextEncoder().encode(content).length > MAX_CALENDAR_IMPORT_BYTES) {
+          showAlert(t('errors.importTooLarge'));
+          return;
+        }
+        try {
+          if (/\.(?:ics|ical)$/i.test(file.name)) {
+            const parsed = parseICS(content);
+            if (!parsed.events.length) throw new Error('No events');
+            pendingImportRef.current = JSON.stringify(mapICSToCalendarData(parsed));
+          } else {
+            pendingImportRef.current = content;
+          }
+          setDialog('import-warning');
+        } catch {
+          showAlert(t(/\.(?:ics|ical)$/i.test(file.name) ? 'errors.invalidIcs' : 'errors.invalidJson'));
+        }
       };
       reader.readAsText(file);
     }
@@ -228,7 +250,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
 
     try {
       const calendarId = await createServerCalendar();
-      showAlert(t('toolbar.saveToServerSuccess', { id: calendarId.substring(0, 8) }));
+      showAlert(t('toolbar.saveToServerSuccess', { id: calendarId.substring(0, 8) }), 'success');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       showAlert(t('toolbar.saveToServerFailed', { error: errorMessage }));
@@ -264,13 +286,13 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
                 aria-label={t('toolbar.editTitlePlaceholder')}
               />
             ) : (
-              <h1
+              <h1><button type="button"
                 className="calendrier-title"
                 onClick={handleTitleClick}
                 title={t('toolbar.editTitlePlaceholder')}
               >
                 {title}
-              </h1>
+              </button></h1>
             )}
         </div>
         <div className="calendrier-toolbar__actions">
@@ -354,12 +376,12 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
         </div>
       </header>
 
-      {alertMessage && <InlineAlert title={alertMessage} variant="info" />}
+      {alertMessage && <InlineAlert title={alertMessage.message} variant={alertMessage.variant} onClose={() => setAlertMessage(null)} />}
 
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json"
+        accept=".json,.ics,.ical,text/calendar,application/ics"
         className="calendrier-file-input"
         onChange={handleFileChange}
       />

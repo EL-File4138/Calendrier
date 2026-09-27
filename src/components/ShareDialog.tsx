@@ -1,3 +1,4 @@
+import TextInput from './ValidatedTextInput';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -11,7 +12,6 @@ import {
   Divider,
   Form,
   FormGroup,
-  TextInput,
   FormSection,
   FormSelect,
   FormSelectOption,
@@ -68,9 +68,14 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
     }
   };
 
+  const [urlError, setUrlError] = useState<string>();
+  const [targetSubmitted, setTargetSubmitted] = useState(false);
+  const invalidUrl = (key: string) => { setUrlError(key); document.getElementById('calendar-url')?.focus(); };
+
   const handleGenerateLegacy = () => {
+    setUrlError(undefined);
     if (!url.trim()) {
-      setFeedback({ title: t('share.enterUrl'), variant: 'danger' });
+      invalidUrl('share.enterUrl');
       return;
     }
 
@@ -78,7 +83,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       // Validate URL
       const testUrl = new URL(url.trim());
       if (!['http:', 'https:'].includes(testUrl.protocol)) {
-        setFeedback({ title: t('share.invalidProtocol'), variant: 'danger' });
+        invalidUrl('share.invalidProtocol');
         return;
       }
 
@@ -94,13 +99,14 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       const generatedUrl = `${currentOrigin}${basePath}/?import=${base64Url}`;
       setShareUrl(generatedUrl);
     } catch {
-      setFeedback({ title: t('share.invalidFormat'), variant: 'danger' });
+      invalidUrl('share.invalidFormat');
     }
   };
 
   const handleGrantAccess = async () => {
+    setTargetSubmitted(true);
     if (!targetUserId.trim()) {
-      setFeedback({ title: t('shareDialog.serverMode.enterUserId'), variant: 'danger' });
+      document.getElementById('target-user-id')?.focus();
       return;
     }
 
@@ -163,7 +169,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
       <ModalBody>
         {syncMode === 'server' && calendarId ? (
         <Form className="share-dialog-form">
-          {feedback && <InlineAlert title={feedback.title} variant={feedback.variant} />}
+          {feedback && <InlineAlert onClose={() => setFeedback(null)} title={feedback.title} variant={feedback.variant} />}
           {/* Server-based sharing */}
           <FormSection title={t('shareDialog.serverMode.calendarLink')} className="share-dialog-section">
             <p className="share-dialog-section__description">
@@ -196,7 +202,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
             <div className="share-dialog-grant-form">
               <FormGroup label={t('shareDialog.serverMode.userId')} isRequired fieldId="target-user-id">
                 <TextInput
-                  id="target-user-id"
+                  error={targetSubmitted && !targetUserId.trim() ? t('shareDialog.serverMode.enterUserId') : undefined} id="target-user-id"
                   type="text"
                   placeholder={t('shareDialog.serverMode.userIdPlaceholder')}
                   value={targetUserId}
@@ -217,7 +223,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
               <Button
                 variant={ButtonVariant.primary}
                 onClick={handleGrantAccess}
-                isDisabled={isGranting || !targetUserId.trim()}
+                isDisabled={isGranting}
                 isLoading={isGranting}
               >
                 {isGranting ? t('shareDialog.serverMode.granting') : t('shareDialog.serverMode.grantButton')}
@@ -237,7 +243,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
                 <span>{t('shareDialog.serverMode.loading')}</span>
               </div>
             ) : privileges.length === 0 ? (
-              <Alert variant="info" isInline title={t('shareDialog.serverMode.noAccess')} />
+              <Alert variantLabel={t("notifications.info")} variant="info" isInline title={t('shareDialog.serverMode.noAccess')} />
             ) : (
               <div className="share-dialog-access-list">
                 {privileges.map((priv) => (
@@ -273,27 +279,23 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
             {t('share.description')}
           </p>
 
-          <Form>
+          <Form noValidate onSubmit={(event) => { event.preventDefault(); handleGenerateLegacy(); }}>
             <FormGroup
               label={t('share.calendarUrl')}
               isRequired
               fieldId="calendar-url"
             >
               <TextInput
-                id="calendar-url"
+                error={urlError ? t(urlError) : undefined} id="calendar-url"
                 type="text"
                 placeholder={t('share.urlPlaceholder')}
                 value={url}
-                onChange={(_event, value) => setUrl(value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleGenerateLegacy();
-                  }
-                }}
+                onChange={(_event, value) => { setUrl(value); setUrlError(undefined); }}
+
               />
             </FormGroup>
 
-            <Button variant={ButtonVariant.primary} onClick={handleGenerateLegacy}>
+            <Button variant={ButtonVariant.primary} type="submit">
               {t('share.generate')}
             </Button>
           </Form>
@@ -309,7 +311,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
           )}
 
           {!userId && (
-            <Alert variant="info" isInline title={t('shareDialog.tip.title')} className="pf-v6-u-mt-md">
+            <Alert variantLabel={t("notifications.info")} variant="info" isInline title={t('shareDialog.tip.title')} className="pf-v6-u-mt-md">
               {t('shareDialog.tip.message')}
             </Alert>
           )}

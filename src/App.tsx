@@ -14,7 +14,7 @@ import './App.css';
 
 function AppContent() {
   const { t } = useTranslation();
-  const { isLoaded, localError } = useCalendar();
+  const { isLoaded, localError, dismissLocalError } = useCalendar();
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | undefined>();
@@ -61,7 +61,7 @@ function AppContent() {
     <div className="calendrier-app">
       <Toolbar onAddCourse={handleAddCourse} onOpenSettings={() => setShowSettings(true)} />
       <main className="calendrier-main">
-        {localError && <InlineAlert title={localError} variant="danger" />}
+        {localError && <InlineAlert onClose={dismissLocalError} title={t(localError)} variant="danger" />}
         <URLHandler />
         <WeekCalendar
           onEditCourse={handleEditCourse}

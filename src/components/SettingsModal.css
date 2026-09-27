@@ -1,110 +1,33 @@
-.settings-modal {
-  max-width: 500px;
+.settings-form .pf-v6-c-form__group {
+  margin-block-end: 0;
 }
 
-.settings-body {
-  padding: 24px;
+.settings-form .pf-v6-c-form__group-control {
+  display: grid;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
-.setting-group {
-  margin-bottom: 24px;
+.event-type-icon-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--lg);
 }
 
-.setting-group:last-child {
-  margin-bottom: 0;
-}
-
-.setting-label {
-  display: block;
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 12px;
-  color: #333;
-}
-
-.setting-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.radio-option {
+.event-type-icon-setting {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
-.radio-option:hover {
-  background: #f8f9fa;
-  border-color: #007bff;
+@media (max-width: 30rem) {
+  .event-type-icon-settings { grid-template-columns: 1fr; }
 }
+.settings-about-button { margin-inline-start: auto; }
 
-.radio-option input[type="radio"] {
-  margin: 0 10px 0 0;
-  cursor: pointer;
-}
-
-.radio-option span {
-  font-size: 14px;
-  color: #555;
-}
-
-.settings-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px;
-  border-top: 1px solid #eee;
-}
-
-/* Dark mode styles */
-html.dark-mode .modal-overlay {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-html.dark-mode .modal-content {
-  background: #1e1e1e;
-  color: #e0e0e0;
-}
-
-html.dark-mode .modal-header {
-  border-bottom-color: #444;
-}
-
-html.dark-mode .modal-header h2 {
-  color: #e0e0e0;
-}
-
-html.dark-mode .close-button {
-  color: #999;
-}
-
-html.dark-mode .close-button:hover {
-  color: #e0e0e0;
-}
-
-html.dark-mode .setting-label {
-  color: #e0e0e0;
-}
-
-html.dark-mode .radio-option {
-  border-color: #444;
-  background: #2a2a2a;
-}
-
-html.dark-mode .radio-option:hover {
-  background: #333;
-  border-color: #007bff;
-}
-
-html.dark-mode .radio-option span {
-  color: #ccc;
-}
-
-html.dark-mode .settings-footer {
-  border-top-color: #444;
-}
+.about-content { display: grid; gap: var(--pf-t--global--spacer--lg); }
+.about-brand { display: grid; justify-items: center; gap: var(--pf-t--global--spacer--sm); text-align: center; }
+.about-brand img { object-fit: contain; }
+.about-brand h3 { font-size: var(--pf-t--global--font--size--heading--xl); }
+.about-version { color: var(--pf-t--global--text--color--subtle); }
+.about-content section h3 { font-weight: var(--pf-t--global--font--weight--heading--default); margin-block-end: var(--pf-t--global--spacer--xs); }

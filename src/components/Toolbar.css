@@ -52,6 +52,9 @@
 }
 
 .calendrier-title {
+  border: 0;
+  background: transparent;
+  text-align: start;
   margin: 0;
   font-size: var(--pf-t--global--font--size--heading--h1);
   font-weight: var(--pf-t--global--font--weight--heading--default);
@@ -76,30 +79,6 @@
 
 .calendrier-title:hover {
   background: var(--pf-t--global--background--color--action--hover);
-}
-
-/* Dark mode styles */
-html.dark-mode .calendrier-toolbar {
-  background: #2a2a2a;
-  border-bottom-color: #444;
-}
-
-html.dark-mode .calendrier-toolbar__utility-actions {
-  border-inline-start-color: #444;
-}
-
-html.dark-mode .calendrier-title {
-  color: #e0e0e0;
-}
-
-html.dark-mode .calendrier-title:hover {
-  background: #3a3a3a;
-}
-
-html.dark-mode .pf-v6-c-text-input-group__text-input {
-  background: #2a2a2a;
-  color: #e0e0e0;
-  border-color: #444;
 }
 
 /* Print styles */
@@ -133,6 +112,7 @@ html.dark-mode .pf-v6-c-text-input-group__text-input {
   }
 
   .calendrier-toolbar__utility-actions {
+    width: 100%;
     border-inline-start: 0;
     padding-inline-start: 0;
   }

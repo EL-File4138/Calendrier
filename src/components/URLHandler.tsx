@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCalendar } from '../context/CalendarContext';
+import { MAX_CALENDAR_IMPORT_BYTES } from '../context/CalendarContext';
 import ConfirmDialog from './ConfirmDialog';
-import './URLHandler.css';
+import InlineAlert from './InlineAlert';
 
 /**
  * URLHandler - Processes URL query parameters for various actions
@@ -20,7 +21,6 @@ export const URLHandler = () => {
     importData,
   } = useCalendar();
 
-  const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<'info' | 'success' | 'error'>('info');
   const [pendingImport, setPendingImport] = useState<string | null>(null);
@@ -62,7 +62,6 @@ export const URLHandler = () => {
   }, [isLoaded]);
 
   const handleLoadCalendar = async (calendarId: string) => {
-    setProcessing(true);
     setMessage(t('urlHandler.loadingCalendar'));
     setMessageType('info');
 
@@ -77,13 +76,10 @@ export const URLHandler = () => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessage(t('urlHandler.loadFailed', { error: errorMessage }));
       setMessageType('error');
-    } finally {
-      setProcessing(false);
     }
   };
 
   const handleLegacyImport = async (importUrl: string) => {
-    setProcessing(true);
     setMessage(t('urlHandler.importingCalendar'));
     setMessageType('info');
 
@@ -110,7 +106,16 @@ export const URLHandler = () => {
         throw new Error(t('urlHandler.fetchFailed', { error: response.statusText }));
       }
 
+      const contentLength = response.headers.get('Content-Length');
+      if (contentLength && Number(contentLength) > MAX_CALENDAR_IMPORT_BYTES) {
+        throw new Error(t('urlHandler.importTooLarge'));
+      }
+
       const jsonString = await response.text();
+      if (new TextEncoder().encode(jsonString).length > MAX_CALENDAR_IMPORT_BYTES) {
+        throw new Error(t('urlHandler.importTooLarge'));
+      }
+
       const data = JSON.parse(jsonString) as { courses?: unknown };
       if (!Array.isArray(data.courses)) {
         throw new Error(t('urlHandler.invalidCalendarData'));
@@ -122,15 +127,14 @@ export const URLHandler = () => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessage(t('urlHandler.importFailed', { error: errorMessage }));
       setMessageType('error');
-    } finally {
-      setProcessing(false);
     }
   };
 
   const handleConfirmImport = async () => {
     if (pendingImport) {
-      await importData(pendingImport);
+      const imported = await importData(pendingImport);
       setPendingImport(null);
+      if (!imported) return;
       setMessage(t('urlHandler.importSucceeded'));
       setMessageType('success');
       setTimeout(() => setMessage(null), 3000);
@@ -152,21 +156,5 @@ export const URLHandler = () => {
 
   if (!message) return null;
 
-  return (
-    <div className={`url-handler-notification ${messageType}`}>
-      <div className="url-handler-content">
-        {processing && <div className="url-handler-spinner" />}
-        <span className="url-handler-message">{message}</span>
-        {!processing && (
-          <button
-            className="url-handler-close"
-            onClick={() => setMessage(null)}
-            aria-label={t('share.close')}
-          >
-            ×
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  return <InlineAlert title={message} variant={messageType === 'error' ? 'danger' : messageType} onClose={() => setMessage(null)} />;
 };

@@ -1,0 +1,20 @@
+.icon-picker-palette {
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  gap: 6px;
+  padding: 4px;
+}
+
+.session-type-field {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.session-type-field > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.icon-picker-option { min-width: 40px; min-height: 40px; }
+.icon-picker-option--automatic { grid-column: 1 / -1; }

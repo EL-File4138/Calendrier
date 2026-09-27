@@ -47,9 +47,12 @@ i18n
     }
   });
 
+document.documentElement.lang = i18n.resolvedLanguage ?? 'en';
+
 // Save language changes to localStorage
 i18n.on('languageChanged', (lng) => {
   safeStorage.setItem('calendrier-language', lng);
+  document.documentElement.lang = i18n.resolvedLanguage ?? lng;
 });
 
 export default i18n;

@@ -1,29 +1,12 @@
-/* UserPanel customizations for PatternFly Popover */
-
-.user-panel-toggle {
+.user-panel-toggle__content {
   display: inline-flex;
   align-items: center;
-  gap: var(--pf-t--global--spacer--xs);
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .user-panel-popover {
-  --pf-v6-c-popover__content--MinWidth: 16rem;
-  --pf-v6-c-popover__content--MaxWidth: min(18rem, calc(100vw - 2rem));
-}
-
-.user-panel-popover .pf-v6-c-popover__content {
-  border-radius: var(--pf-t--global--border-radius--medium);
-  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.28);
-  min-width: 0;
-}
-
-.user-panel-popover .pf-v6-c-popover__close {
-  inset-block-start: var(--pf-t--global--spacer--xs);
-  inset-inline-end: var(--pf-t--global--spacer--xs);
-}
-
-.user-panel-popover .pf-v6-c-popover__close .pf-v6-c-button {
-  transform: scale(0.8);
+  width: min(21rem, calc(100vw - 2rem));
+  --pf-v6-c-popover--MaxWidth: min(21rem, calc(100vw - 2rem));
 }
 
 .user-panel-toggle__icon {
@@ -32,10 +15,11 @@
 
 .user-panel-status {
   display: inline-block;
+  flex-shrink: 0;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 999px;
-  background: var(--pf-t--global--color--status--default--100);
+  border-radius: 50%;
+  background: var(--pf-t--global--icon--color--subtle);
 }
 
 .user-panel-status--blue {
@@ -46,100 +30,34 @@
   background: var(--pf-t--global--color--status--success--100);
 }
 
-.user-panel-status--grey {
-  background: var(--pf-t--global--icon--color--subtle);
-}
-
-.user-section {
-  padding: var(--pf-t--global--spacer--md);
-  width: min(18rem, calc(100vw - 2rem));
-}
-
-.user-section h4 {
-  margin: 0;
-  font-size: var(--pf-t--global--font--size--body--lg);
-  font-weight: var(--pf-t--global--font--weight--body--bold);
-}
-
-.user-section__header {
-  display: flex;
-  align-items: flex-start;
+.user-section,
+.user-panel-form,
+.user-panel-meta-list {
+  display: grid;
   gap: var(--pf-t--global--spacer--md);
-  margin-block-end: var(--pf-t--global--spacer--sm);
-}
-
-.user-section__header--compact {
-  align-items: center;
-}
-
-.user-section__header--compact > div {
-  flex: 1 1 auto;
   min-width: 0;
 }
 
-.user-section__header--compact h4 {
-  font-size: var(--pf-t--global--font--size--body--md);
-}
-
-.user-section__header > svg {
-  flex: 0 0 auto;
-  margin-block-start: 0.125rem;
-  color: var(--pf-t--global--icon--color--subtle);
-}
-
-.user-section__header p,
-.user-section__note {
-  margin: var(--pf-t--global--spacer--xs) 0 0;
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  line-height: 1.45;
-}
-
-.user-panel-form {
-  display: grid;
-  gap: var(--pf-t--global--spacer--md);
+.user-panel-form .pf-v6-c-form__group {
+  margin-block-end: 0;
 }
 
 .user-panel-form .pf-v6-c-button {
   justify-self: start;
 }
 
-.user-panel-meta-list,
-.user-panel-syncing {
-  border: 1px solid color-mix(in srgb, var(--pf-t--global--border--color--default) 80%, transparent);
-  border-radius: var(--pf-t--global--border-radius--small);
-  background: color-mix(in srgb, var(--pf-t--global--background--color--secondary--default) 72%, transparent);
-}
-
-.user-panel-meta-list {
-  margin-block-start: var(--pf-t--global--spacer--sm);
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-}
-
 .user-panel-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--pf-t--global--spacer--md);
-  padding-block-end: var(--pf-t--global--spacer--sm);
-  margin-block-end: var(--pf-t--global--spacer--sm);
-  border-block-end: 1px solid color-mix(in srgb, var(--pf-t--global--border--color--default) 72%, transparent);
-}
-
-.user-panel-meta-row > span:first-child {
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .user-panel-copyable {
   gap: var(--pf-t--global--spacer--xs);
   align-items: flex-start;
   flex-direction: column;
-}
-
-.user-panel-copyable .copyable-id__label {
-  color: var(--pf-t--global--text--color--subtle);
-  font-size: var(--pf-t--global--font--size--body--sm);
 }
 
 .user-panel-copyable .copyable-id__value {
@@ -150,47 +68,16 @@
   display: flex;
   align-items: center;
   gap: var(--pf-t--global--spacer--sm);
-  margin-block-start: var(--pf-t--global--spacer--sm);
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-}
-
-html.dark-mode .user-panel-meta-list,
-html.dark-mode .user-panel-syncing {
-  background: #262626;
-  border-color: #3f3f3f;
-}
-
-html.dark-mode .user-panel-popover .pf-v6-c-popover__content {
-  background: #1f1f1f;
-  border-color: #3a3a3a;
-  color: #ececec;
-}
-
-html.dark-mode .user-section__header p,
-html.dark-mode .user-section__note,
-html.dark-mode .user-panel-meta-row > span:first-child,
-html.dark-mode .user-panel-copyable .copyable-id__label {
-  color: #c5c5c5;
-}
-
-html.dark-mode .user-section__header h4,
-html.dark-mode .user-panel-meta-row,
-html.dark-mode .user-panel-syncing {
-  color: #f5f5f5;
 }
 
 @media (max-width: 768px) {
-  .user-section {
-    width: min(17rem, calc(100vw - 2rem));
-  }
-
   .user-panel-toggle__text {
     display: none;
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 768px) {
   .user-panel-toggle {
-    width: auto;
+    margin-inline-start: auto;
   }
 }

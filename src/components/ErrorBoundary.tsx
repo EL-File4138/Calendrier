@@ -28,7 +28,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
       return (
         <div className="calendrier-error-state">
-        <Alert variant="danger" isInline title={i18n.t('errorBoundary.title')}>
+        <Alert variantLabel={i18n.t("notifications.danger")} variant="danger" isInline title={i18n.t('errorBoundary.title')}>
           <p>{this.state.error.message}</p>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             {i18n.t('errorBoundary.reload')}

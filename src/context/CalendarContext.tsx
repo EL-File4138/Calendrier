@@ -1,9 +1,11 @@
+import i18n from '../i18n/config';
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { Course, CalendarData, Settings, Weekday } from '../types/Course';
+import type { Course, CalendarData, Settings, Weekday, SessionSchedule, SessionOverride, AcademicCalendar, AcademicPeriodKind } from '../types/Course';
 import type { WSUpdateMessage, WSPresenceMessage } from '../api/types';
 import { getNextColor } from '../utils/colors';
 import { calendarAPI } from '../api/client';
+import { DEFAULT_EVENT_TYPE_ICONS } from '../utils/eventIcons';
 
 const STORAGE_KEY = 'academic-calendar-data';
 const USER_ID_KEY = 'calendrier-user-id';
@@ -11,6 +13,7 @@ const SESSION_TOKEN_KEY = 'calendrier-session-token';
 const CALENDAR_ID_KEY = 'calendrier-calendar-id';
 const USER_REGISTERED_KEY = 'calendrier-user-registered';
 const WEEKDAYS: Weekday[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+export const MAX_CALENDAR_IMPORT_BYTES = 256 * 1024;
 
 const safeLocalStorage = {
   getItem(key: string) {
@@ -51,7 +54,9 @@ interface CalendarContextType {
   hasWriteAccess: boolean;
   isSyncing: boolean;
   lastSyncError: string | null;
+  dismissSyncError: () => void;
   localError: string | null;
+  dismissLocalError: () => void;
   version: number;
 
   // CRUD operations
@@ -66,7 +71,7 @@ interface CalendarContextType {
 
   // Import/Export (local JSON)
   exportData: () => string;
-  importData: (jsonString: string) => Promise<void>;
+  importData: (jsonString: string) => Promise<boolean>;
 
   // Server operations
   createServerCalendar: () => Promise<string>;
@@ -87,6 +92,27 @@ const CalendarContext = createContext<CalendarContextType | undefined>(undefined
 const defaultSettings: Settings = {
   timeFormat: '24h',
   weekStart: 'Monday',
+  weekView: 'school',
+  eventTypeIcons: DEFAULT_EVENT_TYPE_ICONS,
+};
+
+const sanitizeAcademicCalendar = (value: unknown): AcademicCalendar | undefined => {
+  if (!isRecord(value) || typeof value.yearLabel !== 'string' || typeof value.startDate !== 'string' || typeof value.endDate !== 'string' || !Array.isArray(value.periods)) return undefined;
+  const kinds: AcademicPeriodKind[] = ['semester', 'break', 'holiday', 'exams', 'retakeExams', 'other'];
+  const periods = value.periods.flatMap((period): AcademicCalendar['periods'] => {
+    if (!isRecord(period) || typeof period.label !== 'string' || typeof period.startDate !== 'string' || typeof period.endDate !== 'string') return [];
+    return [{
+      id: typeof period.id === 'string' ? period.id : crypto.randomUUID(),
+      label: period.label,
+      kind: kinds.includes(period.kind as AcademicPeriodKind) ? period.kind as AcademicPeriodKind : 'other',
+      startDate: period.startDate,
+      endDate: period.endDate,
+    }];
+  });
+  const specialDates = isRecord(value.specialDates)
+    ? Object.fromEntries(Object.entries(value.specialDates).flatMap(([date, label]): Array<[string, string]> => /^\d{4}-\d{2}-\d{2}$/.test(date) && typeof label === 'string' && label.trim() ? [[date, label]] : []))
+    : undefined;
+  return { yearLabel: value.yearLabel, startDate: value.startDate, endDate: value.endDate, periods, specialDates };
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -98,6 +124,7 @@ const sanitizeCalendarData = (value: unknown): CalendarData => {
     return { courses: [] };
   }
 
+  const usedColors = Array.isArray(value.courses) ? value.courses.flatMap((course) => isRecord(course) && typeof course.color === 'string' ? [course.color] : []) : [];
   const courses = Array.isArray(value.courses)
     ? value.courses.flatMap((course): Course[] => {
       if (!isRecord(course)) return [];
@@ -106,22 +133,48 @@ const sanitizeCalendarData = (value: unknown): CalendarData => {
         ? course.sessions.flatMap((session): Course['sessions'] => {
           if (!isRecord(session) || !WEEKDAYS.includes(session.meetDay as Weekday)) return [];
 
+          const rawSchedule = isRecord(session.schedule) ? session.schedule : undefined;
+          const rawOverrides = rawSchedule && isRecord(rawSchedule.overrides) ? rawSchedule.overrides : undefined;
+          const overrides = rawOverrides ? Object.fromEntries(Object.entries(rawOverrides).flatMap(([date, raw]): Array<[string, SessionOverride]> => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isRecord(raw)) return [];
+            const override: SessionOverride = {};
+            if (raw.cancelled === true) override.cancelled = true;
+            for (const key of ['moveToDate', 'startTime', 'endTime', 'location', 'instructor'] as const) {
+              if (typeof raw[key] === 'string' && raw[key]) override[key] = raw[key];
+            }
+            return [[date, override]];
+          })) : undefined;
+          const schedule: SessionSchedule | undefined = rawSchedule && (rawSchedule.mode === 'weekly' || rawSchedule.mode === 'once' || rawSchedule.mode === 'bounded')
+            ? {
+              mode: rawSchedule.mode,
+              startDate: typeof rawSchedule.startDate === 'string' ? rawSchedule.startDate : undefined,
+              endDate: typeof rawSchedule.endDate === 'string' ? rawSchedule.endDate : undefined,
+              intervalWeeks: typeof rawSchedule.intervalWeeks === 'number' && rawSchedule.intervalWeeks > 0 ? Math.floor(rawSchedule.intervalWeeks) : 1,
+              excludedDates: Array.isArray(rawSchedule.excludedDates) ? rawSchedule.excludedDates.filter((date): date is string => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) : [],
+              overrides,
+            } : undefined;
+
           return [{
             id: typeof session.id === 'string' ? session.id : crypto.randomUUID(),
             meetDay: session.meetDay as Weekday,
             startTime: typeof session.startTime === 'string' ? session.startTime : '09:00',
             endTime: typeof session.endTime === 'string' ? session.endTime : '10:00',
             sessionType: typeof session.sessionType === 'string' ? session.sessionType : undefined,
+            icon: typeof session.icon === 'string' ? session.icon : undefined,
             instructor: typeof session.instructor === 'string' ? session.instructor : undefined,
             location: typeof session.location === 'string' ? session.location : undefined,
+            schedule,
           }];
         })
         : [];
 
+      const color = typeof course.color === 'string' ? course.color : getNextColor(usedColors);
+      usedColors.push(color);
       return [{
         id: typeof course.id === 'string' ? course.id : crypto.randomUUID(),
-        title: typeof course.title === 'string' ? course.title : 'Untitled course',
-        color: typeof course.color === 'string' ? course.color : getNextColor([]),
+        title: typeof course.title === 'string' ? course.title : i18n.t('calendar.untitledCourse'),
+        color,
+        icon: typeof course.icon === 'string' ? course.icon : undefined,
         sessions,
       }];
     })
@@ -131,6 +184,11 @@ const sanitizeCalendarData = (value: unknown): CalendarData => {
     ? {
       timeFormat: value.settings.timeFormat === '12h' ? '12h' : '24h',
       weekStart: value.settings.weekStart === 'Sunday' ? 'Sunday' : 'Monday',
+      weekView: value.settings.weekView === 'full' ? 'full' : 'school',
+      eventTypeIcons: isRecord(value.settings.eventTypeIcons)
+        ? { ...DEFAULT_EVENT_TYPE_ICONS, ...Object.fromEntries(Object.entries(value.settings.eventTypeIcons).flatMap(([key, icon]): Array<[string, string]> => typeof icon === 'string' && icon.trim() ? [[key, icon.trim().slice(0, 32)]] : [])) }
+        : { ...DEFAULT_EVENT_TYPE_ICONS },
+      academicCalendar: sanitizeAcademicCalendar(value.settings.academicCalendar),
     } satisfies Settings
     : undefined;
 
@@ -144,7 +202,7 @@ const sanitizeCalendarData = (value: unknown): CalendarData => {
 export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [title, setTitle] = useState('Academic Calendar');
+  const [title, setTitle] = useState(i18n.t('calendar.defaultTitle'));
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -272,7 +330,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
         // Handle QuotaExceededError
         if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-          setLocalError('Browser storage is full. Please delete old calendars or export your data.');
+          setLocalError('errors.storageFull');
         }
       }
     }
@@ -309,9 +367,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       // Keep rendering even when browser storage is unavailable.
     }
     if (darkMode) {
-      document.documentElement.classList.add('dark-mode');
+      document.documentElement.classList.add('dark-mode', 'pf-v6-theme-dark');
     } else {
-      document.documentElement.classList.remove('dark-mode');
+      document.documentElement.classList.remove('dark-mode', 'pf-v6-theme-dark');
     }
   }, [darkMode, isLoaded]);
 
@@ -401,7 +459,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
           }, delay);
         } else {
           console.error('Max WebSocket reconnection attempts reached');
-          setLastSyncError('Connection lost. Please refresh the page.');
+          setLastSyncError(i18n.t('errors.connectionLost'));
         }
       };
 
@@ -428,7 +486,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       if (response.success) {
         setVersion(response.version);
       } else {
-        setLastSyncError(response.message || 'Sync failed - version conflict');
+        setLastSyncError(i18n.t('errors.syncConflict'));
         // Version conflict - the WebSocket will receive the latest version
       }
     } catch (error: unknown) {
@@ -550,7 +608,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setCourses([]);
-    setTitle('Academic Calendar');
+    setTitle(i18n.t('calendar.defaultTitle'));
     setSettings(defaultSettings);
     setCalendarId(null);
     setSyncMode('local');
@@ -575,26 +633,29 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
   const importData = async (jsonString: string) => {
     try {
+      if (new TextEncoder().encode(jsonString).length > MAX_CALENDAR_IMPORT_BYTES) {
+        setLocalError('errors.importTooLarge');
+        return false;
+      }
       const data = sanitizeCalendarData(JSON.parse(jsonString));
       setCourses(data.courses);
-      if (data.title) {
-        setTitle(data.title);
-      }
-      if (data.settings) {
-        setSettings({ ...defaultSettings, ...data.settings });
-      }
+      setTitle(data.title || i18n.t('calendar.defaultTitle'));
+      setSettings({ ...defaultSettings, ...data.settings });
+      setLocalError(null);
       if (syncMode === 'server' && hasWriteAccess) {
         debouncedSync();
       }
+      return true;
     } catch (error) {
       console.error('Failed to import data:', error);
-      setLocalError('Invalid JSON format');
+      setLocalError('errors.invalidJson');
+      return false;
     }
   };
 
   const createServerCalendar = async (): Promise<string> => {
     if (!userId || !sessionToken) {
-      throw new Error('User must be logged in to create server calendars');
+      throw new Error(i18n.t('toolbar.saveToServerError'));
     }
 
     // Auto-revoke from current calendar if switching
@@ -667,7 +728,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
   const grantAccess = async (targetUserId: string, level: 'owner' | 'write' | 'read'): Promise<boolean> => {
     if (!calendarId || !userId || !sessionToken) {
-      throw new Error('No calendar or user ID');
+      throw new Error(i18n.t('errors.calendarNotFound'));
     }
 
     try {
@@ -681,7 +742,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
   const revokeAccess = async (targetUserId: string): Promise<{ success: boolean; message?: string; shouldDestroy?: boolean }> => {
     if (!calendarId || !userId || !sessionToken) {
-      throw new Error('No calendar or user ID');
+      throw new Error(i18n.t('errors.calendarNotFound'));
     }
 
     try {
@@ -694,7 +755,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
   const listPrivileges = async (): Promise<Array<{userId: string; level: string; grantedAt: number; grantedBy: string}>> => {
     if (!calendarId || !userId || !sessionToken) {
-      throw new Error('No calendar or user ID');
+      throw new Error(i18n.t('errors.calendarNotFound'));
     }
 
     try {
@@ -702,7 +763,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       if (response.success && response.privileges) {
         return response.privileges;
       }
-      throw new Error(response.message || 'Failed to list privileges');
+      throw new Error(i18n.t('errors.loadPrivileges'));
     } catch (error: unknown) {
       console.error('Failed to list privileges:', error);
       throw error;
@@ -711,7 +772,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteCalendar = async (): Promise<void> => {
     if (!calendarId || !userId || !sessionToken) {
-      throw new Error('No calendar or user ID');
+      throw new Error(i18n.t('errors.calendarNotFound'));
     }
 
     try {
@@ -719,7 +780,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
       // Reset to local mode after deletion
       setCourses([]);
-      setTitle('Academic Calendar');
+      setTitle(i18n.t('calendar.defaultTitle'));
       setSettings(defaultSettings);
       setCalendarId(null);
       setSyncMode('local');
@@ -766,7 +827,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         hasWriteAccess,
         isSyncing,
         lastSyncError,
+        dismissSyncError: () => setLastSyncError(null),
         localError,
+        dismissLocalError: () => setLocalError(null),
         version,
         addCourse,
         updateCourse,

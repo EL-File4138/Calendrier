@@ -1,4 +1,10 @@
 .course-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+  text-align: start;
   height: 100%;
   padding: 8px;
   border-radius: 4px;
@@ -6,17 +12,24 @@
   font-size: 12px;
   line-height: 1.4;
   overflow: hidden;
-  transition: opacity 0.2s, transform 0.1s;
   color: #000;
   border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
 }
 
+.course-block > * {
+  flex-shrink: 0;
+}
+
 .course-block:hover {
   opacity: 0.9;
-  transform: scale(1.02);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.course-block:focus-visible {
+  outline: 2px solid var(--pf-t--global--color--brand--default);
+  outline-offset: 2px;
 }
 
 .course-title {
@@ -28,27 +41,30 @@
   white-space: nowrap;
 }
 
+.course-type-icon { margin-right: 4px; }
+
 .course-time {
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
   margin-bottom: 3px;
-  font-size: 11px;
+  font-size: var(--pf-t--global--font--size--body--sm);
 }
 
 .course-session-type {
   font-style: italic;
-  font-size: 10px;
+  font-size: var(--pf-t--global--font--size--body--sm);
   margin-bottom: 2px;
   opacity: 0.9;
 }
 
 .course-location {
-  font-size: 10px;
+  font-size: var(--pf-t--global--font--size--body--sm);
   opacity: 0.85;
   margin-bottom: 2px;
 }
 
 .course-instructor {
-  font-size: 10px;
+  font-size: var(--pf-t--global--font--size--body--sm);
   opacity: 0.85;
 }
 

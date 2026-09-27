@@ -1,0 +1,18 @@
+.week-date-popover .pf-v6-c-calendar-month {
+  --pf-v6-c-calendar-month--BackgroundColor: transparent;
+}
+
+@media (max-width: 30rem) {
+  .week-date-popover .pf-v6-c-calendar-month {
+    --pf-v6-c-calendar-month--PaddingInlineStart: var(--pf-t--global--spacer--sm);
+    --pf-v6-c-calendar-month--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
+    --pf-v6-c-calendar-month__header-year--Width: 6ch;
+    --pf-v6-c-calendar-month__header--Gap: var(--pf-t--global--spacer--xs);
+    --pf-v6-c-calendar-month__date--Width: 3ch;
+  }
+  .week-date-popover .pf-v6-c-menu-toggle {
+    --pf-v6-c-menu-toggle--PaddingInlineStart: var(--pf-t--global--spacer--sm);
+    --pf-v6-c-menu-toggle--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
+  }
+}
+.week-date-display { display: inline-flex; align-items: center; gap: var(--pf-t--global--spacer--xs); min-width: 0; }

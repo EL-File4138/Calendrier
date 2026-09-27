@@ -52,247 +52,10 @@
   min-height: 0;
 }
 
-/* Dark mode styles */
-html.dark-mode {
-  background: #1e1e1e;
-  color: #e0e0e0;
-}
-
-html.dark-mode body {
-  background: #1e1e1e;
-}
-
-html.dark-mode .calendrier-app {
-  background: #1e1e1e;
-}
-
-html.dark-mode .pf-v6-c-page {
-  background: #1e1e1e;
-}
-
-html.dark-mode .pf-v6-c-page__main {
-  background: #1e1e1e;
-}
-
-html.dark-mode .pf-v6-c-masthead,
-html.dark-mode .calendrier-toolbar {
-  background: #2a2a2a;
-  border-bottom: 1px solid #444;
-}
-
-html.dark-mode .pf-v6-c-toolbar {
-  background: transparent;
-}
-
-html.dark-mode .pf-v6-c-button.pf-m-plain {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-button.pf-m-plain:hover {
-  background: #3a3a3a;
-}
-
-/* Dark mode - PatternFly CSS variable overrides */
-html.dark-mode {
-  /* Page and layout */
-  --pf-v6-c-page--BackgroundColor: #1e1e1e;
-  --pf-v6-c-page__main--BackgroundColor: #1e1e1e;
-
-  /* Masthead/Header */
-  --pf-v6-c-masthead--BackgroundColor: #2a2a2a;
-  --pf-v6-c-masthead--BorderBottomColor: #444;
-
-  /* Menu toggle (dropdown buttons) */
-  --pf-v6-c-menu-toggle--BackgroundColor: #2a2a2a;
-  --pf-v6-c-menu-toggle--Color: #e0e0e0;
-  --pf-v6-c-menu-toggle--BorderColor: #444;
-  --pf-v6-c-menu-toggle--hover--BackgroundColor: #3a3a3a;
-  --pf-v6-c-menu-toggle--hover--BorderColor: #555;
-  --pf-v6-c-menu-toggle--focus--BackgroundColor: #3a3a3a;
-  --pf-v6-c-menu-toggle--active--BackgroundColor: #3a3a3a;
-  --pf-v6-c-menu-toggle--expanded--BackgroundColor: #3a3a3a;
-
-  /* Menu (dropdown menus) */
-  --pf-v6-c-menu--BackgroundColor: #2a2a2a;
-  --pf-v6-c-menu--BorderColor: #444;
-  --pf-v6-c-menu--BoxShadow: 0 0.25rem 0.5rem 0 rgba(0, 0, 0, 0.5);
-  --pf-v6-c-menu__list-item--Color: #e0e0e0;
-  --pf-v6-c-menu__list-item--BackgroundColor: transparent;
-  --pf-v6-c-menu__list-item--hover--BackgroundColor: #3a3a3a;
-  --pf-v6-c-menu__list-item--focus--BackgroundColor: #3a3a3a;
-  --pf-v6-c-menu__item--Color: #e0e0e0;
-  --pf-v6-c-menu__item--hover--BackgroundColor: #3a3a3a;
-
-  /* Dropdown (legacy component) */
-  --pf-v6-c-dropdown__menu--BackgroundColor: #2a2a2a;
-  --pf-v6-c-dropdown__menu--BorderColor: #444;
-  --pf-v6-c-dropdown--m-expanded__toggle--BackgroundColor: #3a3a3a;
-
-  /* Modal */
-  --pf-v6-c-modal-box--BackgroundColor: #2a2a2a;
-  --pf-v6-c-modal-box__header--BackgroundColor: #2a2a2a;
-  --pf-v6-c-modal-box__header--BorderBottomColor: #444;
-  --pf-v6-c-modal-box__body--BackgroundColor: #2a2a2a;
-  --pf-v6-c-modal-box__footer--BackgroundColor: #2a2a2a;
-  --pf-v6-c-modal-box__footer--BorderTopColor: #444;
-  --pf-v6-c-modal-box__title--Color: #e0e0e0;
-
-  /* Form controls */
-  --pf-v6-c-form-control--BackgroundColor: #1e1e1e;
-  --pf-v6-c-form-control--BorderColor: #444;
-  --pf-v6-c-form-control--Color: #e0e0e0;
-  --pf-v6-c-form-control--focus--BorderColor: #0066cc;
-  --pf-v6-c-form__label--Color: #e0e0e0;
-  --pf-v6-c-form__group-label-main--Color: #e0e0e0;
-
-  /* Buttons */
-  --pf-v6-c-button--m-plain--Color: #e0e0e0;
-  --pf-v6-c-button--m-plain--hover--BackgroundColor: #3a3a3a;
-
-  /* Labels */
-  --pf-v6-c-label--BackgroundColor: #3a3a3a;
-  --pf-v6-c-label--Color: #e0e0e0;
-
-  /* Cards */
-  --pf-v6-c-card--BackgroundColor: #2a2a2a;
-  --pf-v6-c-card--BorderColor: #444;
-  --pf-v6-c-card__header--BackgroundColor: #2a2a2a;
-  --pf-v6-c-card__title--Color: #e0e0e0;
-  --pf-v6-c-card__body--Color: #e0e0e0;
-
-  /* Divider */
-  --pf-v6-c-divider--BackgroundColor: #444;
-}
-
 /* Menu toggle class-based overrides */
-html.dark-mode .pf-v6-c-menu-toggle {
-  background-color: #2a2a2a;
-  border-color: #444;
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-menu-toggle:hover,
-html.dark-mode .pf-v6-c-menu-toggle.pf-m-expanded {
-  background-color: #3a3a3a;
-  border-color: #555;
-}
-
 /* Dropdown menu class-based overrides */
-html.dark-mode .pf-v6-c-dropdown__menu,
-html.dark-mode .pf-v6-c-menu {
-  background-color: #2a2a2a;
-  border-color: #444;
-  box-shadow: 0 0.25rem 0.5rem 0 rgba(0, 0, 0, 0.5);
-}
-
-html.dark-mode .pf-v6-c-dropdown__menu-item,
-html.dark-mode .pf-v6-c-dropdown-menu__item,
-html.dark-mode .pf-v6-c-menu__list-item,
-html.dark-mode .pf-v6-c-menu__item {
-  color: #e0e0e0;
-  background-color: transparent;
-}
-
-html.dark-mode .pf-v6-c-dropdown__menu-item:hover,
-html.dark-mode .pf-v6-c-dropdown-menu__item:hover,
-html.dark-mode .pf-v6-c-menu__list-item:hover,
-html.dark-mode .pf-v6-c-menu__item:hover {
-  background-color: #3a3a3a;
-}
-
-html.dark-mode .pf-v6-c-dropdown__menu-item:focus,
-html.dark-mode .pf-v6-c-menu__list-item:focus,
-html.dark-mode .pf-v6-c-menu__item:focus {
-  background-color: #3a3a3a;
-}
-
 /* Card class-based overrides */
-html.dark-mode .pf-v6-c-card {
-  background-color: #2a2a2a;
-  border-color: #444;
-}
-
-html.dark-mode .pf-v6-c-card__header {
-  background-color: #2a2a2a;
-  border-bottom-color: #444;
-}
-
-html.dark-mode .pf-v6-c-card__title,
-html.dark-mode .pf-v6-c-card__title *,
-html.dark-mode .pf-v6-c-card__title span {
-  color: #e0e0e0 !important;
-}
-
-html.dark-mode .pf-v6-c-card__body {
-  color: #e0e0e0;
-}
-
 /* Divider class-based overrides */
-html.dark-mode .pf-v6-c-divider {
-  background-color: #444;
-}
-
-/* Modal dark mode */
-html.dark-mode .pf-v6-c-modal-box {
-  background: #2a2a2a;
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-modal-box__header {
-  background: #2a2a2a;
-  border-bottom-color: #444;
-}
-
-html.dark-mode .pf-v6-c-modal-box__title {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-modal-box__body {
-  background: #2a2a2a;
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-modal-box__footer {
-  background: #2a2a2a;
-  border-top-color: #444;
-}
-
-/* Form elements dark mode */
-html.dark-mode .pf-v6-c-form-control,
-html.dark-mode .pf-v6-c-text-input-group__text-input,
-html.dark-mode input.pf-v6-c-form-control,
-html.dark-mode select.pf-v6-c-form-control,
-html.dark-mode input[type="text"],
-html.dark-mode input[type="time"],
-html.dark-mode input[type="color"],
-html.dark-mode select {
-  background: #1e1e1e;
-  border-color: #444;
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-form-control:focus,
-html.dark-mode .pf-v6-c-text-input-group__text-input:focus,
-html.dark-mode input[type="text"]:focus,
-html.dark-mode input[type="time"]:focus {
-  border-color: #0066cc;
-}
-
-html.dark-mode .pf-v6-c-form__label {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-form__group-label-main {
-  color: #e0e0e0;
-}
-
-/* Placeholder text dark mode */
-html.dark-mode input::placeholder,
-html.dark-mode textarea::placeholder {
-  color: #888;
-  opacity: 1;
-}
-
 /* Color picker styling */
 .course-color-picker {
   width: 100px;
@@ -324,7 +87,7 @@ html.dark-mode textarea::placeholder {
 }
 
 .course-form-grid--title {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   margin-block-end: var(--pf-t--global--spacer--md);
 }
 
@@ -401,122 +164,7 @@ html.dark-mode textarea::placeholder {
   }
 }
 
-html.dark-mode .course-color-picker {
-  border-color: #444;
-}
-
-/* Description list dark mode */
-html.dark-mode .pf-v6-c-description-list__term {
-  color: #b0b0b0;
-}
-
-html.dark-mode .pf-v6-c-description-list__description {
-  color: #e0e0e0;
-}
-
-/* Icons dark mode */
-html.dark-mode .pf-v6-c-button svg,
-html.dark-mode svg {
-  fill: currentColor;
-}
-
-html.dark-mode .pf-v6-c-button.pf-m-plain svg {
-  fill: #e0e0e0;
-}
-
-/* Clipboard copy dark mode */
-html.dark-mode .pf-v6-c-clipboard-copy {
-  background: #1e1e1e;
-  border-color: #444;
-}
-
-html.dark-mode .pf-v6-c-clipboard-copy__group {
-  background: #1e1e1e;
-}
-
-html.dark-mode .pf-v6-c-clipboard-copy__text {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-clipboard-copy__actions-item button {
-  background: #2a2a2a;
-  border-color: #444;
-  color: #e0e0e0;
-}
-
-/* Alert dark mode */
-html.dark-mode .pf-v6-c-alert {
-  background: #2a2a2a;
-  border-color: #444;
-}
-
-html.dark-mode .pf-v6-c-alert__title {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-alert__description {
-  color: #e0e0e0;
-}
-
-/* Label dark mode */
-html.dark-mode .pf-v6-c-label {
-  background: #3a3a3a;
-  color: #e0e0e0;
-}
-
-/* FormSelect dark mode */
-html.dark-mode .pf-v6-c-form-control__select,
-html.dark-mode .pf-v6-c-select,
-html.dark-mode .pf-v6-c-select__toggle,
-html.dark-mode .pf-v6-c-form-control.pf-m-select {
-  background: #1e1e1e;
-  border-color: #444;
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-select__menu {
-  background: #2a2a2a;
-  border-color: #444;
-}
-
-html.dark-mode .pf-v6-c-select__menu-item {
-  color: #e0e0e0;
-  background: transparent;
-}
-
-html.dark-mode .pf-v6-c-select__menu-item:hover {
-  background: #3a3a3a;
-}
-
 /* FormSelect option elements */
-html.dark-mode .pf-v6-c-form-control__select option {
-  background: #2a2a2a;
-  color: #e0e0e0;
-}
-
-/* Radio dark mode */
-html.dark-mode .pf-v6-c-radio__label {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-radio__input {
-  border-color: #444;
-}
-
-html.dark-mode .pf-v6-c-radio__input:checked {
-  background-color: #0066cc;
-  border-color: #0066cc;
-}
-
-/* Spinner dark mode */
-html.dark-mode .pf-v6-c-spinner {
-  color: #e0e0e0;
-}
-
-html.dark-mode .pf-v6-c-spinner__tail-ball {
-  background-color: #e0e0e0;
-}
-
 @media print {
   body {
     background: white;
@@ -535,4 +183,27 @@ html.dark-mode .pf-v6-c-spinner__tail-ball {
     size: landscape;
     margin: 0.5in;
   }
+}
+.session-overrides {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.session-override-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(10rem, auto);
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.session-override-actions {
+  display: grid;
+  gap: 0.25rem;
+  align-content: end;
+  min-height: 4.5rem;
+}
+
+@media (max-width: 768px) {
+  .session-override-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

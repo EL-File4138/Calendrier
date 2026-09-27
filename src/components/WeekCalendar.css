@@ -1,4 +1,6 @@
 .week-calendar {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   overflow: auto;
@@ -26,7 +28,8 @@ html.dark-mode .calendar-title {
 
 .calendar-grid {
   min-width: 900px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -138,6 +141,7 @@ html.dark-mode .context-menu button:hover {
 }
 .calendar-header {
   display: flex;
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   background: white;
@@ -165,12 +169,85 @@ html.dark-mode .context-menu button:hover {
   border-right: none;
 }
 
-.calendar-body {
+.all-day-row {
   display: flex;
+  flex-shrink: 0;
+  min-height: 30px;
+  border-bottom: 1px solid #c7c7c7;
+  background: #fff;
+}
+
+.all-day-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 80px;
+  flex-shrink: 0;
+  padding: 8px;
+  color: #6a6e73;
+  font-size: 11px;
+  text-align: right;
+  border-right: 1px solid #ddd;
+}
+
+.all-day-cell {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-right: 1px solid #ddd;
+  overflow: hidden;
+}
+
+.all-day-cell:last-child { border-right: none; }
+
+.academic-period,
+.academic-special-date {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 3px;
+  padding: 3px 5px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.academic-period { background: #e7f1fa; color: #153e5c; display: flex; align-items: center; gap: 5px; border: 0; text-align: left; cursor: pointer; flex-shrink: 0; }
+.academic-period svg { flex-shrink: 0; }
+.academic-period span { overflow: hidden; text-overflow: ellipsis; }
+.all-day-add { padding: 3px 5px; font-size: 11px; line-height: 1.2; flex-shrink: 0; margin-top: auto; border: 0; border-radius: 3px; background: transparent; color: inherit; cursor: pointer; }
+.all-day-add span { opacity: 0; }
+.all-day-add:hover span, .all-day-add:focus-visible span { opacity: 1; }
+.all-day-add:hover, .all-day-add:focus-visible { background: #80808022; outline: 1px dashed currentColor; }
+.academic-period-break,
+.academic-period-holiday { background: #fff1c7; color: #5f4400; }
+.academic-period-exams,
+.academic-period-retakeExams { background: #f8d7da; color: #6b1f26; }
+.academic-special-date { background: #e8e8e8; color: #363636; }
+
+html.dark-mode .all-day-row { background: #1e1e1e; border-bottom-color: #444; }
+html.dark-mode .all-day-label,
+html.dark-mode .all-day-cell { border-right-color: #444; }
+html.dark-mode .academic-period { background: #24445c; color: #e7f1fa; }
+html.dark-mode .academic-period-break,
+html.dark-mode .academic-period-holiday { background: #594a24; color: #fff1c7; }
+html.dark-mode .academic-period-exams,
+html.dark-mode .academic-period-retakeExams { background: #5b2c31; color: #f8d7da; }
+html.dark-mode .academic-special-date { background: #3b3b3b; color: #eee; }
+
+.calendar-body {
   flex: 1;
   position: relative;
   overflow-y: auto;
   min-height: 0;
+}
+
+.calendar-time-grid {
+  display: flex;
+  height: 100%;
 }
 
 .time-labels {
@@ -199,10 +276,11 @@ html.dark-mode .context-menu button:hover {
   display: flex;
   flex: 1;
   position: relative;
-  min-height: 100%;
+  min-width: 0;
 }
 
 .day-column {
+  isolation: isolate;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -214,6 +292,19 @@ html.dark-mode .context-menu button:hover {
 .day-column:last-child {
   border-right: none;
 }
+
+.day-period-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0.22;
+  backdrop-filter: saturate(0.65);
+}
+.day-period-mask-break, .day-period-mask-holiday { background: #fff1c7; }
+.day-period-mask-exams, .day-period-mask-retakeExams { background: #f8d7da; }
+html.dark-mode .day-period-mask-break, html.dark-mode .day-period-mask-holiday { background: #594a24; }
+html.dark-mode .day-period-mask-exams, html.dark-mode .day-period-mask-retakeExams { background: #5b2c31; }
 
 .time-slot {
   height: 80px;
@@ -288,3 +379,57 @@ html.dark-mode .context-menu button:hover {
     display: none;
   }
 }
+.calendar-week-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--pf-t--global--spacer--sm);
+  margin: var(--pf-t--global--spacer--md);
+}
+
+.calendar-week-navigation {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+}
+
+@media (max-width: 60rem) {
+  .calendar-week-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .calendar-week-navigation { grid-column: 1; }
+}
+
+.calendar-week-controls { display: inline-flex; flex-shrink: 0; }
+.calendar-week-toolbar .calendar-display-mode {
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+.calendar-week-controls .pf-v6-c-button { --pf-v6-c-button--BorderRadius: 0; }
+.calendar-week-controls .pf-v6-c-button:first-child {
+  --pf-v6-c-button--BorderStartStartRadius: var(--pf-t--global--border--radius--pill);
+  --pf-v6-c-button--BorderEndStartRadius: var(--pf-t--global--border--radius--pill);
+}
+.calendar-week-controls .pf-v6-c-button:last-child {
+  --pf-v6-c-button--BorderStartEndRadius: var(--pf-t--global--border--radius--pill);
+  --pf-v6-c-button--BorderEndEndRadius: var(--pf-t--global--border--radius--pill);
+}
+.calendar-week-controls .pf-v6-c-button + .pf-v6-c-button { margin-inline-start: -1px; }
+.calendar-week-controls .pf-v6-c-button:is(:hover, :focus-visible) { z-index: 1; }
+.calendar-week-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  min-width: 0;
+}
+.calendar-week-heading .academic-period { max-width: 100%; }
+
+.day-header { display: flex; flex-direction: column; gap: 0.15rem; }
+.day-header small { font-size: 0.72rem; opacity: 0.75; }

@@ -1,10 +1,9 @@
+import TextInput from './ValidatedTextInput';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
   Form,
   FormGroup,
-  TextInput,
   Button,
   Label,
   Spinner,
@@ -25,9 +24,11 @@ export const UserPanel = () => {
     syncMode,
     isSyncing,
     lastSyncError,
+    dismissSyncError,
     registerUserSession,
   } = useCalendar();
 
+  const [tokenSubmitted, setTokenSubmitted] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [activationToken, setActivationToken] = useState('');
@@ -35,8 +36,9 @@ export const UserPanel = () => {
   const [feedback, setFeedback] = useState<{ title: string; variant: 'danger' | 'success' } | null>(null);
 
   const handleCreateUser = async () => {
+    setTokenSubmitted(true);
     if (!activationToken.trim()) {
-      setFeedback({ title: t('userPanel.enterToken'), variant: 'danger' });
+      document.getElementById('account-activation-token')?.focus();
       return;
     }
 
@@ -78,31 +80,31 @@ export const UserPanel = () => {
     <Popover
       isVisible={showPanel}
       shouldClose={() => setShowPanel(false)}
+      aria-label={t('userPanel.userStatus')}
+      headerContent={!userId ? t('userPanel.createAccount') : getStatusText()}
+      headerIcon={<UserIcon aria-hidden="true" />}
+      closeBtnAriaLabel={t('share.close')}
+      footerContent={t(userId ? 'userPanel.footerHasUser' : 'userPanel.footerNoUser')}
       bodyContent={
         <div className="user-section">
           {!userId ? (
             <>
-              <div className="user-section__header">
-                <UserIcon />
-                <div>
-                  <h4>{t('userPanel.createAccount')}</h4>
-                  <p>
-                    {t('userPanel.createAccountHelp')}
-                  </p>
-                </div>
-              </div>
-              {feedback && <InlineAlert title={feedback.title} variant={feedback.variant} />}
-              <Form className="user-panel-form">
-                <FormGroup label={t('userPanel.tokenPlaceholder')} isRequired>
+              <p>{t('userPanel.createAccountHelp')}</p>
+              {feedback && <InlineAlert onClose={() => setFeedback(null)} title={feedback.title} variant={feedback.variant} />}
+              <Form className="user-panel-form" noValidate onSubmit={(event) => { event.preventDefault(); void handleCreateUser(); }}>
+                <FormGroup label={t('userPanel.tokenPlaceholder')} fieldId="account-activation-token" isRequired>
                   <TextInput
+                    error={tokenSubmitted && !activationToken.trim() ? t('userPanel.enterToken') : undefined} id="account-activation-token"
+                    isRequired
                     type="text"
                     value={activationToken}
                     onChange={(_event, value) => setActivationToken(value)}
                     placeholder={t('userPanel.tokenPlaceholder')}
                   />
                 </FormGroup>
-                <FormGroup label={t('userPanel.displayNamePlaceholder')}>
+                <FormGroup label={t('userPanel.displayNamePlaceholder')} fieldId="account-display-name">
                   <TextInput
+                    id="account-display-name"
                     type="text"
                     value={displayName}
                     onChange={(_event, value) => setDisplayName(value)}
@@ -111,26 +113,16 @@ export const UserPanel = () => {
                 </FormGroup>
                 <Button
                   variant="primary"
-                  onClick={handleCreateUser}
-                  isDisabled={isCreatingUser || !activationToken.trim()}
+                  type="submit"
+                  isDisabled={isCreatingUser}
                   isLoading={isCreatingUser}
                 >
                   {isCreatingUser ? t('userPanel.creating') : t('userPanel.createAccount')}
                 </Button>
               </Form>
-              <p className="user-section__note">
-                {t('userPanel.footerNoUser')}
-              </p>
             </>
           ) : (
             <>
-              <div className="user-section__header user-section__header--compact">
-                <UserIcon />
-                <div>
-                  <h4>{getStatusText()}</h4>
-                </div>
-              </div>
-
               <div className="user-panel-meta-list">
                 <div className="user-panel-meta-row">
                   <span>{t('userPanel.statusLabel')}</span>
@@ -152,16 +144,14 @@ export const UserPanel = () => {
                 </div>
               )}
               {lastSyncError && (
-                <Alert variant="danger" isInline title={t('userPanel.syncError', { error: lastSyncError })} />
+                <InlineAlert onClose={dismissSyncError} variant="danger" title={t('userPanel.syncError', { error: lastSyncError })} />
               )}
-              <p className="user-section__note">
-                {t('userPanel.footerHasUser')}
-              </p>
             </>
           )}
         </div>
       }
       position={PopoverPosition.bottomEnd}
+      flipBehavior={['bottom-end', 'bottom-start', 'top-end', 'top-start', 'bottom', 'top']}
       className="user-panel-popover"
     >
       <Button
@@ -169,10 +159,13 @@ export const UserPanel = () => {
         className="user-panel-toggle"
         onClick={() => setShowPanel((value) => !value)}
         aria-label={t('userPanel.userStatus')}
+        aria-expanded={showPanel}
       >
+        <span className="user-panel-toggle__content">
         <span className={`user-panel-status user-panel-status--${getStatusColor()}`} aria-hidden="true" />
         <UserIcon className="user-panel-toggle__icon" />
         <span className="user-panel-toggle__text">{getStatusText()}</span>
+        </span>
       </Button>
     </Popover>
   );
