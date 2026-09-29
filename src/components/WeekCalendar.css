@@ -3,7 +3,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   background: white;
   user-select: none;
 }
@@ -34,7 +34,9 @@ html.dark-mode .calendar-title {
   flex-direction: column;
   position: relative;
   border-radius: 16px 16px 0 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 /* Dark mode styles */
@@ -241,7 +243,7 @@ html.dark-mode .academic-special-date { background: #3b3b3b; color: #eee; }
 .calendar-body {
   flex: 1;
   position: relative;
-  overflow-y: auto;
+  overflow: visible;
   min-height: 0;
 }
 
@@ -433,3 +435,6 @@ html.dark-mode .day-period-mask-exams, html.dark-mode .day-period-mask-retakeExa
 
 .day-header { display: flex; flex-direction: column; gap: 0.15rem; }
 .day-header small { font-size: 0.72rem; opacity: 0.75; }
+.academic-period-delete-button {
+  margin-inline-start: auto;
+}

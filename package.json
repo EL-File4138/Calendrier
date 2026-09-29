@@ -1,13 +1,13 @@
 {
   "name": "calendrier",
   "private": true,
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "npm run build && npm run lint && npm --prefix worker run test",
+    "test": "node --test tests/*.test.cjs && npm run build && npm run lint && npm --prefix worker run test",
     "preview": "vite preview"
   },
   "dependencies": {

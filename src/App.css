@@ -14,6 +14,32 @@
   overflow: hidden;
 }
 
+.public-calendar-header {
+  flex-shrink: 0;
+}
+
+.public-calendar-heading,
+.public-calendar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  min-width: 0;
+}
+
+.public-calendar-heading h1 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  cursor: default;
+}
+
+.public-calendar-state {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  padding: var(--pf-t--global--spacer--xl);
+}
+
 .calendrier-loading-state {
   flex: 1;
 }
@@ -83,12 +109,24 @@
 
 .course-form-grid {
   display: grid;
-  gap: var(--pf-t--global--spacer--md);
+  gap: var(--pf-t--global--spacer--sm);
 }
 
 .course-form-grid--title {
   grid-template-columns: minmax(0, 1fr) auto auto;
-  margin-block-end: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+#course-edit-form .pf-v6-c-form__group {
+  margin-block-end: 0;
+}
+
+#course-edit-form .pf-v6-c-form__section {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+#course-edit-form > .pf-v6-c-divider {
+  margin-block: var(--pf-t--global--spacer--sm) !important;
 }
 
 .course-form-grid--three {
@@ -141,6 +179,15 @@
 }
 
 @media (max-width: 768px) {
+  .public-calendar-header {
+    align-items: stretch;
+  }
+
+  .public-calendar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .course-form-grid--title,
   .course-form-grid--three {
     grid-template-columns: 1fr;

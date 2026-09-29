@@ -26,6 +26,7 @@ const periodIcons = {
 interface WeekCalendarProps {
   onEditCourse: (courseId: string) => void;
   onDragCreate: (day: Weekday, startTime: string, endTime: string) => void;
+  readOnly?: boolean;
 }
 
 interface ContextMenuState {
@@ -50,7 +51,7 @@ interface PositionedSession {
   columns: number;
 }
 
-const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
+const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCalendarProps) => {
   const TIME_LABEL_WIDTH = 80;
   const { t, i18n } = useTranslation();
   const { courses, settings, updateSettings, duplicateCourse, deleteCourse, title } = useCalendar();
@@ -215,6 +216,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   }, [contextMenu.visible]);
 
   const handleContextMenu = (e: React.MouseEvent, courseId: string) => {
+    if (readOnly) return;
     e.preventDefault();
     e.stopPropagation();
     const menuWidth = 140;
@@ -250,6 +252,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   };
 
   const handleAcademicContextMenu = (event: React.MouseEvent, date: Date, period?: AcademicPeriod) => {
+    if (readOnly) return;
     event.preventDefault();
     event.stopPropagation();
     const key = dateKey(date);
@@ -281,6 +284,17 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
       ? nextCalendar.periods.map((period) => period.id === academicDialog.periodId ? { ...period, label: academicDialog.label.trim(), kind: academicDialog.kind, startDate: academicDialog.startDate, endDate: academicDialog.endDate } : period)
       : [...nextCalendar.periods, { id: crypto.randomUUID(), label: academicDialog.label.trim(), kind: academicDialog.kind, startDate: academicDialog.startDate, endDate: academicDialog.endDate }];
     updateSettings({ academicCalendar: { ...nextCalendar, startDate: nextCalendar.startDate || academicDialog.startDate, endDate: nextCalendar.endDate || academicDialog.endDate, periods } });
+    setAcademicDialog(null);
+  };
+
+  const deleteAcademicPeriod = () => {
+    if (!academicDialog?.periodId || !settings.academicCalendar) return;
+    updateSettings({
+      academicCalendar: {
+        ...settings.academicCalendar,
+        periods: settings.academicCalendar.periods.filter((period) => period.id !== academicDialog.periodId),
+      },
+    });
     setAcademicDialog(null);
   };
 
@@ -333,6 +347,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (readOnly) return;
     if (e.button !== 0) return;
     const day = getDayFromX(e.clientX);
     if (!day) return;
@@ -396,7 +411,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
         <div className="calendar-week-heading">
           <WeekDatePicker date={displayedWeek} label={formatWeekRange(displayedWeek, i18n.resolvedLanguage)} weekStart={settings.weekStart} onSelect={(date) => setDisplayedWeek(weekStartDate(date, settings.weekStart))} />
           {visibleSemesters.map((period) => (
-            <button type="button" key={period.id} className="academic-period academic-period-semester" onClick={(event) => handleAcademicContextMenu(event, displayedWeek, period)} onContextMenu={(event) => handleAcademicContextMenu(event, displayedWeek, period)} title={`${t('settings.periodKinds.semester')}: ${period.label}`}>
+              <button type="button" key={period.id} className="academic-period academic-period-semester" onClick={(event) => handleAcademicContextMenu(event, displayedWeek, period)} onContextMenu={(event) => handleAcademicContextMenu(event, displayedWeek, period)} title={`${t('settings.periodKinds.semester')}: ${period.label}`} disabled={readOnly}>
               <BookOpenIcon aria-hidden="true" /><span>{period.label}</span>
             </button>
           ))}
@@ -428,13 +443,13 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
               const periods = date ? academicPeriodsForDate(settings.academicCalendar, date).filter((period) => period.kind !== 'semester') : [];
               const special = date ? academicSpecialDateLabel(settings.academicCalendar, date) : undefined;
               return (
-                <div key={day} className="all-day-cell" onContextMenu={(event) => date && handleAcademicContextMenu(event, date)} title={t('calendar.addPeriod')}>
+                 <div key={day} className="all-day-cell" onContextMenu={(event) => date && handleAcademicContextMenu(event, date)} title={readOnly ? undefined : t('calendar.addPeriod')}>
                   {periods.map((period) => {
                     const PeriodIcon = periodIcons[period.kind];
-                    return <button type="button" key={period.id} className={`academic-period academic-period-${period.kind}`} onClick={(event) => date && handleAcademicContextMenu(event, date, period)} onContextMenu={(event) => date && handleAcademicContextMenu(event, date, period)} title={`${t(`settings.periodKinds.${period.kind}`)}: ${period.label}`}><PeriodIcon aria-hidden="true" /><span>{period.label}</span></button>;
+                     return <button type="button" key={period.id} className={`academic-period academic-period-${period.kind}`} onClick={(event) => date && handleAcademicContextMenu(event, date, period)} onContextMenu={(event) => date && handleAcademicContextMenu(event, date, period)} title={`${t(`settings.periodKinds.${period.kind}`)}: ${period.label}`} disabled={readOnly}><PeriodIcon aria-hidden="true" /><span>{period.label}</span></button>;
                   })}
                   {special && <span className="academic-special-date">{special}</span>}
-                  <button type="button" className="all-day-add" aria-label={`${t('calendar.addPeriod')} ${date ? dateKey(date) : ''}`} title={t('calendar.addPeriod')} onClick={(event) => date && handleAcademicContextMenu(event, date)} onContextMenu={(event) => date && handleAcademicContextMenu(event, date)}><span aria-hidden="true">+</span></button>
+                   {!readOnly && <button type="button" className="all-day-add" aria-label={`${t('calendar.addPeriod')} ${date ? dateKey(date) : ''}`} title={t('calendar.addPeriod')} onClick={(event) => date && handleAcademicContextMenu(event, date)} onContextMenu={(event) => date && handleAcademicContextMenu(event, date)}><span aria-hidden="true">+</span></button>}
                 </div>
              );
            })}
@@ -503,7 +518,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
         </div>
       </div>
 
-      {contextMenu.visible && (
+       {!readOnly && contextMenu.visible && (
         <div
           className="context-menu"
           ref={contextMenuRef}
@@ -527,16 +542,16 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
           session={sessionDetail.session}
           timeFormat={settings.timeFormat}
           onClose={() => setSessionDetail({ visible: false, course: null, session: null })}
-          onEdit={() => {
+           onEdit={readOnly ? undefined : () => {
             if (sessionDetail.course) {
               onEditCourse(sessionDetail.course.id);
               setSessionDetail({ visible: false, course: null, session: null });
             }
           }}
-        />
+         />
       )}
 
-      {academicDialog && (
+       {!readOnly && academicDialog && (
         <Modal variant={ModalVariant.small} isOpen onClose={() => setAcademicDialog(null)} aria-labelledby="academic-period-dialog-title">
           <ModalHeader title={academicDialog.periodId ? t('calendar.editPeriod') : t('calendar.addPeriod')} labelId="academic-period-dialog-title" />
           <ModalBody>
@@ -556,6 +571,9 @@ const WeekCalendar = ({ onEditCourse, onDragCreate }: WeekCalendarProps) => {
           <ModalFooter>
             <Button variant={ButtonVariant.primary} type="submit" form="academic-period-form">{t('calendar.savePeriod')}</Button>
             <Button variant={ButtonVariant.link} onClick={() => setAcademicDialog(null)}>{t('settings.cancel')}</Button>
+            {academicDialog.periodId && (
+              <Button variant={ButtonVariant.danger} onClick={deleteAcademicPeriod} className="academic-period-delete-button">{t('contextMenu.delete')}</Button>
+            )}
           </ModalFooter>
         </Modal>
       )}

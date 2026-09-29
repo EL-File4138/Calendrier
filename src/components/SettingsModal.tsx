@@ -33,7 +33,7 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
       <ModalBody>
         {showAbout ? <div className="about-content">
           <div className="about-brand">
-            <img src="/icon.png" alt="" width="88" height="88" />
+            <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="88" height="88" />
             <h3>Calendrier</h3>
             <p className="about-version">{t('about.version', { version })}</p>
             <p>{t('about.description')}</p>
@@ -52,19 +52,19 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
           </section>
         </div> : <>
         <Form className="settings-form">
-          <FormGroup label={t('settings.timeFormat')} role="radiogroup" className="pf-v6-u-mb-md">
+          <FormGroup label={t('settings.timeFormat')} role="radiogroup">
             <Radio id="time-format-24h" name="timeFormat" label={t('settings.timeFormat24h')} isChecked={timeFormat === '24h'} onChange={() => setTimeFormat('24h')} />
             <Radio id="time-format-12h" name="timeFormat" label={t('settings.timeFormat12h')} isChecked={timeFormat === '12h'} onChange={() => setTimeFormat('12h')} />
           </FormGroup>
-          <FormGroup label={t('settings.weekStartsOn')} role="radiogroup" className="pf-v6-u-mb-md">
+          <FormGroup label={t('settings.weekStartsOn')} role="radiogroup">
             <Radio id="week-start-monday" name="weekStart" label={t('settings.monday')} isChecked={weekStart === 'Monday'} onChange={() => setWeekStart('Monday')} />
             <Radio id="week-start-sunday" name="weekStart" label={t('settings.sunday')} isChecked={weekStart === 'Sunday'} onChange={() => setWeekStart('Sunday')} />
           </FormGroup>
-          <FormGroup label={t('settings.weekView')} role="radiogroup" className="pf-v6-u-mb-md">
+          <FormGroup label={t('settings.weekView')} role="radiogroup">
             <Radio id="week-view-full" name="weekView" label={t('settings.fullWeek')} isChecked={weekView === 'full'} onChange={() => setWeekView('full')} />
             <Radio id="week-view-school" name="weekView" label={t('settings.schoolWeek')} isChecked={weekView === 'school'} onChange={() => setWeekView('school')} />
           </FormGroup>
-          <FormGroup label={t('settings.eventTypeIcons')} className="pf-v6-u-mb-md">
+          <FormGroup label={t('settings.eventTypeIcons')}>
             <div className="event-type-icon-settings">
               {['lecture', 'laboratory', 'exercise', 'seminar', 'project', 'tutorial'].map((type) => (
                 <label className="event-type-icon-setting" key={type} htmlFor={`event-icon-${type}`}>
@@ -74,7 +74,7 @@ const SettingsModal = ({ onClose }: SettingsModalProps) => {
             </div>
             <Button variant={ButtonVariant.link} isInline onClick={() => setEventTypeIcons({ ...DEFAULT_EVENT_TYPE_ICONS })}>{t('settings.resetDefaults')}</Button>
           </FormGroup>
-          <FormGroup label={t('settings.language')} role="radiogroup" className="pf-v6-u-mb-md">
+          <FormGroup label={t('settings.language')} role="radiogroup">
             {AVAILABLE_LANGUAGES.map((lang) => <Radio key={lang.code} id={`language-${lang.code}`} name="language" label={lang.name} isChecked={language === lang.code} onChange={() => setLanguage(lang.code)} />)}
           </FormGroup>
         </Form>

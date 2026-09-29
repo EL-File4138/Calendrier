@@ -98,7 +98,9 @@ export function mapICSToCalendarData(calendar: IcsCalendar): CalendarData {
     const endTimezone = event.end?.timezone === 'UTC' ? calendar.timezone : event.end?.timezone ?? calendar.timezone;
     const endDate = event.end?.date ?? new Date(event.start.date.getTime() + (event.durationMinutes ?? 60) * 60000);
     const occurrence = { title, type, location, instructor, date: dateKeyInTimezone(event.start.date, timezone), start: zonedParts(event.start.date, timezone), end: zonedParts(endDate, endTimezone) };
-    const key = [title.toLocaleLowerCase(), type ?? '', location ?? '', instructor ?? ''].join('|');
+    // Explicit occurrences on different weekdays or time slots are separate series,
+    // not overrides of a recurrence that never occurs on their source date.
+    const key = JSON.stringify([title.toLocaleLowerCase(), type ?? '', location ?? '', instructor ?? '', occurrence.start.weekday, occurrence.start.time, occurrence.end.time]);
     grouped.set(key, [...(grouped.get(key) ?? []), occurrence]);
   }
   const courses = new Map<string, Course>();

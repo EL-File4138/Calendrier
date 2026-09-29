@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `calendrier:${self.registration.scope}:`;
-const CACHE_NAME = `${CACHE_PREFIX}0.1.0-rc.1`;
+const CACHE_NAME = `${CACHE_PREFIX}0.1.0-rc.2`;
 const urlsToCache = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || !url.href.startsWith(self.registration.scope) ||
+  if (event.request.method !== 'GET' || url.pathname.includes('/api/') || !url.href.startsWith(self.registration.scope) ||
       !['document', 'script', 'style', 'font', 'image', 'manifest'].includes(event.request.destination)) {
     return;
   }

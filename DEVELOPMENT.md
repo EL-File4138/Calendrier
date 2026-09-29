@@ -2,18 +2,20 @@
 
 Comprehensive development guide for Calendrier, covering local environment setup, API reference, and implementation details.
 
+Current release candidates: frontend `0.1.0-rc.2` and Worker `1.0.1-rc.2`.
+
 ## Development Environment Setup
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Wrangler CLI: `npm install -g wrangler`
+- Node.js 22.12+ and npm
+- Install the lockfile-pinned Wrangler through `npm ci` in `worker/`; scripts use the local CLI.
 
 ### Frontend Setup
 
 ```bash
 # Install dependencies
-npm install
+npm ci
 
 # Start development server
 npm run dev
@@ -36,7 +38,7 @@ npm run lint
 cd worker
 
 # Install dependencies
-npm install
+npm ci
 
 # Configure development secrets
 cp .dev.vars.example .dev.vars
@@ -115,6 +117,18 @@ Save both `userId` and `sessionToken`. The session token is required as `Authori
 - 500: Internal server error
 
 ---
+
+### Session Logout
+
+`POST /api/user/logout` takes `{ "userId": "user-uuid" }` and the current `Authorization: Bearer <sessionToken>`. It deletes the stored session hash and returns `{ "success": true }`. The frontend clears credentials and closes its WebSocket after attempting this request, including when the request fails. Failure is reported to the caller; it does not prove server revocation succeeded. The endpoint does not terminate already connected remote WebSockets.
+
+### Public Read-Only Links
+
+`POST /api/public/manage` requires an owner session. Send `{ "calendarId": "calendar-uuid", "requesterId": "owner-user-uuid", "action": "create" }`. Actions are `status`, `create`, `revoke`, and `purge`. The response contains `token` and `publicId`, or null values when disabled. Creation reuses an enabled link; revoke before creating to replace it.
+
+`POST /api/public/read` takes `{ "publicId": "43-character-base64url-id", "token": "43-character-base64url-token" }` without account credentials. It returns the same snapshot shape as private reads, with `hasWriteAccess: false`. Invalid inputs return 400; unavailable links return 404. Management requires owner access (403 otherwise).
+
+The UI stores link credentials in `#public=<publicId>.<token>`, then sends them in a POST body with no account credentials or referrer. Public responses use `Cache-Control: no-store`. The Durable Object checks the token on every read before serving its snapshot, cached for up to 60 seconds. Writes, manual purge, and revocation invalidate that snapshot. The public viewer polls every 60 seconds and mounts `PublicCalendarProvider` before any private calendar context is initialized.
 
 ### Calendar Management
 
@@ -248,7 +262,7 @@ Send `Authorization: Bearer <sessionToken>`.
 - Calendar removed from all users' lists
 - All privileges revoked
 - WebSocket connections closed
-- KV cache deleted
+- Public snapshot and legacy KV cache deleted; stale public routing cannot read a deleted document
 
 ---
 
@@ -322,6 +336,10 @@ Send `Authorization: Bearer <sessionToken>`.
 - If the last owner leaves while other collaborators remain, ownership is transferred to another user; if no other users remain, the user must delete the calendar instead.
 
 ---
+
+### Privilege Listing
+
+`POST /api/privilege/list` takes `{ "calendarId": "calendar-uuid", "requesterId": "user-uuid" }` with a session bearer token. Owners see all privileges; other members see only their own.
 
 ### WebSocket
 
@@ -490,7 +508,7 @@ Each calendar is stored in a separate Durable Object instance.
 **write(request: WriteCalendarRequest)**
 - Updates calendar data
 - Validates version for optimistic locking
-- Deletes any legacy anonymous-cache entry for the calendar
+- Invalidates the public snapshot and deletes any legacy anonymous-cache entry for the calendar
 - Broadcasts to WebSocket clients
 
 **grantPrivilege(granterId: string, targetUserId: string, level: PrivilegeLevel)**
@@ -511,9 +529,9 @@ The implementation uses a promise-chain operation queue to serialize mutating op
 ### KV Namespaces
 
 **CALENDAR_CACHE:**
-- Legacy namespace retained for cleanup of old cached calendar data
-- Key format: `calendar:{calendarId}`
-- New writes delete this key; authenticated live reads use Durable Objects directly.
+- Public route mapping: `public-link:{publicId}` -> calendar ID
+- Legacy cache key: `calendar:{calendarId}`; new writes delete this key
+- Authenticated reads use Durable Objects directly; public snapshots live in Durable Object storage.
 
 **ACTIVATION_TOKENS:**
 - Stores activation tokens
@@ -527,6 +545,7 @@ The implementation uses a promise-chain operation queue to serialize mutating op
 - Value: `User` JSON
 - Also stores calendar associations:
   - `user-calendars:{userId}` - List of calendar metadata objects
+- Session hashes at `session:{userId}` expire and are refreshed by HTTP authentication; logout deletes the hash.
 
 ---
 
@@ -613,6 +632,26 @@ if (body.expiresAt && body.expiresAt <= Date.now()) {
 ---
 
 ## Testing Procedures
+
+### Automated Checks
+
+```bash
+npm ci
+npm --prefix worker ci
+npm test
+```
+
+The root test command runs two ICS scheduling regression cases, the frontend TypeScript/Vite build, ESLint, Worker typecheck, and Worker bundling. Worker bundling alone does not typecheck. Browser and Worker API/WebSocket drills below are separate manual checks.
+
+### Import and Calendar Model
+
+JSON imports replace `{ title, courses, settings }` after confirmation and enforce a 256 KB limit. Optional session schedules retain bounded/one-off dates, intervals, exclusions, and per-date overrides. Academic settings retain year periods and special dates. The full schema is in `src/types/Course.ts`.
+
+ICS file and URL imports parse timed events and supported recurrence rules. Imported dates are resolved in the source timezone and grouped into course sessions; unsupported, invalid, and all-day entries are reported. ATS4 sample behavior was checked; representative USOS iCalendar validation remains pending. The regression tests cover off-weekday occurrences and multiple slots on the same day.
+
+### Public Link and Logout Checks
+
+Create a link as owner, open it in another browser session, and verify read-only rendering with the snapshot's settings. Confirm edits appear after refresh, manual purge refreshes the snapshot, and revocation makes the link unavailable. Verify that opening a public link leaves the viewer's private local calendar and account untouched. After logout, HTTP requests with the former session must fail once KV invalidation propagates.
 
 ### Create Activation Token
 
@@ -803,7 +842,7 @@ npm run build
 
 # Worker
 cd worker
-npm run build
+npm test
 ```
 
 ### View Worker Logs
@@ -817,7 +856,7 @@ npm run tail
 
 ```bash
 cd worker
-wrangler deploy
+npm run deploy
 ```
 
 ### Deploy Frontend
@@ -830,18 +869,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for full procedures.
 
 ### Worker Won't Start
 
-```bash
-# Clear Wrangler cache
-rm -rf ~/.wrangler
-
-# Reinstall dependencies
-cd worker
-rm -rf node_modules package-lock.json
-npm install
-
-# Try again
-npm run dev
-```
+Check the reported error, Node version, `worker/.dev.vars`, and bindings in `worker/wrangler.toml`. Restore dependencies with `npm ci` inside `worker/` if needed, then retry `npm run dev`.
 
 ### CORS Errors
 
