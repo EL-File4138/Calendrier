@@ -8,27 +8,37 @@ Current release candidates: frontend `0.1.0-rc.2` and Worker `1.0.1-rc.2`.
 
 ### Prerequisites
 
-- Node.js 22.12+ and npm
-- Install the lockfile-pinned Wrangler through `npm ci` in `worker/`; scripts use the local CLI.
+- Node.js 24 LTS (the repository includes `.nvmrc` with `24`)
+- Yarn Classic 1.22.22. The root and `worker/` are separate Yarn projects with independent lockfiles, not workspaces.
+- Install the lockfile-pinned Wrangler in `worker/`; invoke it through Yarn so the local CLI is used.
+
+Activate the required runtime and package manager, if needed:
+
+```bash
+nvm install
+nvm use
+corepack enable
+corepack prepare yarn@1.22.22 --activate
+```
 
 ### Frontend Setup
 
 ```bash
 # Install dependencies
-npm ci
+yarn install --frozen-lockfile
 
 # Start development server
-npm run dev
+yarn dev
 # Frontend runs at http://localhost:5173
 
 # Build for production
-npm run build
+yarn build
 
 # Preview production build
-npm run preview
+yarn preview
 
 # Code quality
-npm run lint
+yarn lint
 ```
 
 ### Worker Setup
@@ -38,7 +48,7 @@ npm run lint
 cd worker
 
 # Install dependencies
-npm ci
+yarn install --frozen-lockfile
 
 # Configure development secrets
 cp .dev.vars.example .dev.vars
@@ -57,7 +67,7 @@ ADMIN_MASTER_TOKEN=your-generated-token-here
 Start the worker:
 
 ```bash
-npm run dev
+yarn dev
 # Worker runs at http://localhost:8787
 ```
 
@@ -66,12 +76,12 @@ npm run dev
 **Terminal 1 - Worker:**
 ```bash
 cd worker
-npm run dev
+yarn dev
 ```
 
 **Terminal 2 - Frontend:**
 ```bash
-npm run dev
+yarn dev
 ```
 
 Configure frontend `.env`:
@@ -636,9 +646,9 @@ if (body.expiresAt && body.expiresAt <= Date.now()) {
 ### Automated Checks
 
 ```bash
-npm ci
-npm --prefix worker ci
-npm test
+yarn install --frozen-lockfile
+yarn --cwd worker install --frozen-lockfile
+yarn test
 ```
 
 The root test command runs two ICS scheduling regression cases, the frontend TypeScript/Vite build, ESLint, Worker typecheck, and Worker bundling. Worker bundling alone does not typecheck. Browser and Worker API/WebSocket drills below are separate manual checks.
@@ -838,25 +848,25 @@ async newMethod(param: string): Promise<Result> {
 
 ```bash
 # Frontend
-npm run build
+yarn build
 
 # Worker
 cd worker
-npm test
+yarn test
 ```
 
 ### View Worker Logs
 
 ```bash
 cd worker
-npm run tail
+yarn tail
 ```
 
 ### Deploy Worker
 
 ```bash
 cd worker
-npm run deploy
+yarn deploy
 ```
 
 ### Deploy Frontend
@@ -869,7 +879,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for full procedures.
 
 ### Worker Won't Start
 
-Check the reported error, Node version, `worker/.dev.vars`, and bindings in `worker/wrangler.toml`. Restore dependencies with `npm ci` inside `worker/` if needed, then retry `npm run dev`.
+Check the reported error, Node version, `worker/.dev.vars`, and bindings in `worker/wrangler.toml`. Restore dependencies with `yarn install --frozen-lockfile` inside `worker/` if needed, then retry `yarn dev`.
 
 ### CORS Errors
 

@@ -7,9 +7,18 @@ Release candidates: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
 ## Prerequisites
 
 **Required:**
-- Node.js 22.12+ and npm
+- Node.js 24 LTS and Yarn Classic 1.22.22
 - Cloudflare account (for backend)
-- Wrangler CLI is installed from the Worker lockfile (`4.95.0`); use the local script instead of a global install.
+- Wrangler CLI is installed from the Worker lockfile (`4.143.0`); invoke it through Yarn rather than installing it globally.
+
+The root and `worker/` are separate Yarn projects, each with its own lockfile. Before deploying, activate the repository runtime and Yarn if needed:
+
+```bash
+nvm install
+nvm use
+corepack enable
+corepack prepare yarn@1.22.22 --activate
+```
 
 **Optional:**
 - Vercel/Netlify account (for frontend hosting)
@@ -19,10 +28,16 @@ Release candidates: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
 
 ## Backend Deployment (Cloudflare Workers)
 
+Run each command block from the repository root unless it starts with `cd worker`. Install the Worker dependencies before invoking Wrangler:
+
+```bash
+yarn --cwd worker install --frozen-lockfile
+```
+
 ### 1. Authenticate with Cloudflare (CLI workflow)
 
 ```bash
-wrangler login
+yarn --cwd worker wrangler login
 ```
 
 Follow the browser prompt to authorize Wrangler.
@@ -33,14 +48,14 @@ Follow the browser prompt to authorize Wrangler.
 cd worker
 
 # Create production namespaces
-wrangler kv namespace create "CALENDAR_CACHE"
-wrangler kv namespace create "ACTIVATION_TOKENS"
-wrangler kv namespace create "USERS"
+yarn wrangler kv namespace create "CALENDAR_CACHE"
+yarn wrangler kv namespace create "ACTIVATION_TOKENS"
+yarn wrangler kv namespace create "USERS"
 
 # Create preview namespaces
-wrangler kv namespace create "CALENDAR_CACHE" --preview
-wrangler kv namespace create "ACTIVATION_TOKENS" --preview
-wrangler kv namespace create "USERS" --preview
+yarn wrangler kv namespace create "CALENDAR_CACHE" --preview
+yarn wrangler kv namespace create "ACTIVATION_TOKENS" --preview
+yarn wrangler kv namespace create "USERS" --preview
 ```
 
 Copy the namespace IDs from the output.
@@ -79,7 +94,7 @@ openssl rand -hex 32
 Set it as a Cloudflare secret only when provisioning a new environment or rotating the existing secret:
 
 ```bash
-wrangler secret put ADMIN_MASTER_TOKEN
+yarn --cwd worker wrangler secret put ADMIN_MASTER_TOKEN
 ```
 
 Paste the generated token when prompted. The token must be at least 32 characters.
@@ -88,9 +103,9 @@ Paste the generated token when prompted. The token must be at least 32 character
 
 ```bash
 cd worker
-npm ci
-npm test
-npm run deploy
+yarn install --frozen-lockfile
+yarn test
+yarn deploy
 ```
 
 The current deployment target is `https://calendrier-worker.elfile4138.workers.dev`. Confirm the URL after deployment if the account subdomain changes.
@@ -137,8 +152,8 @@ VITE_WORKER_URL=https://your-worker-url.workers.dev
 ### 2. Build Frontend
 
 ```bash
-npm ci
-npm run build
+yarn install --frozen-lockfile
+yarn build
 ```
 
 The build output is `dist/`. Set `VITE_WORKER_URL` to the deployed Worker URL at build time. The service worker caches static shell assets under a release-specific cache name and excludes `/api/` requests; public snapshot refreshes therefore require network access.
@@ -154,19 +169,20 @@ vercel deploy --prod
 **Netlify:**
 
 Drag the `dist/` folder to the Netlify dashboard, or connect your Git repository with:
-- Build command: `npm run build`
+- Build command: `yarn build`
 - Publish directory: `dist`
 
 **Cloudflare Pages:**
 
 ```bash
-wrangler pages deploy dist
+# Run from the repository root. `--cwd worker` makes the root build output `../dist`.
+yarn --cwd worker wrangler pages deploy ../dist
 ```
 
 **GitHub Pages:**
 
 ```bash
-npm run build
+yarn build
 # Push dist/ folder to gh-pages branch
 ```
 
@@ -268,7 +284,7 @@ View real-time logs:
 
 ```bash
 cd worker
-npm run tail
+yarn tail
 ```
 
 Set up alerts for high error rates in the Cloudflare dashboard.
@@ -288,7 +304,7 @@ openssl rand -hex 32
 Update the secret:
 
 ```bash
-wrangler secret put ADMIN_MASTER_TOKEN
+yarn --cwd worker wrangler secret put ADMIN_MASTER_TOKEN
 ```
 
 ### Manage Activation Tokens
@@ -323,14 +339,14 @@ curl -X POST https://your-worker-url.workers.dev/api/admin/token/revoke \
 
 ```bash
 cd worker
-wrangler rollback
+yarn wrangler rollback
 ```
 
 Or deploy a specific version:
 
 ```bash
-wrangler versions list
-wrangler versions deploy <version-id>
+yarn wrangler versions list
+yarn wrangler versions deploy <version-id>
 ```
 
 ### Rollback Frontend
@@ -343,8 +359,8 @@ Deploy a previous build from the dashboard.
 
 **Cloudflare Pages:**
 ```bash
-wrangler pages deployment list
-wrangler pages deployment rollback <deployment-id>
+yarn --cwd worker wrangler pages deployment list
+yarn --cwd worker wrangler pages deployment rollback <deployment-id>
 ```
 
 ---
@@ -405,7 +421,7 @@ ADMIN_MASTER_TOKEN=<64-character-hex-string>
 ## Support
 
 For issues or questions:
-- Review logs: `wrangler tail`
+- Review logs: `yarn --cwd worker wrangler tail`
 - Check Cloudflare dashboard for errors
 - Verify all configuration matches this guide
 - Consult [DEVELOPMENT.md](./DEVELOPMENT.md) for API reference

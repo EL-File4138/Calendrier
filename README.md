@@ -46,11 +46,18 @@ Release candidate: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
 
 ### Frontend Only (Local Mode)
 
-Use Node.js 22.12+ and npm. The repository includes npm lockfiles; its package-manager metadata also declares Yarn 1.
+Use Node.js 24 LTS and Yarn Classic 1.22.22. The root and `worker/` are separate Yarn projects with separate lockfiles; they are not workspaces.
 
 ```bash
-npm ci
-npm run dev
+nvm install
+nvm use
+corepack enable
+corepack prepare yarn@1.22.22 --activate
+```
+
+```bash
+yarn install --frozen-lockfile
+yarn dev
 ```
 
 Open `http://localhost:5173` in your browser.
@@ -60,14 +67,14 @@ Open `http://localhost:5173` in your browser.
 **Terminal 1 - Backend:**
 ```bash
 cd worker
-npm install
-npm run dev
+yarn install --frozen-lockfile
+yarn dev
 ```
 
 **Terminal 2 - Frontend:**
 ```bash
-npm install
-npm run dev
+yarn install --frozen-lockfile
+yarn dev
 ```
 
 Configure `.env`:
@@ -116,9 +123,9 @@ Optional session `schedule` fields preserve dates, recurrence intervals, exclusi
 ## Validation
 
 ```bash
-npm ci
-npm --prefix worker ci
-npm test
+yarn install --frozen-lockfile
+yarn --cwd worker install --frozen-lockfile
+yarn test
 ```
 
 This runs ICS scheduling regressions, frontend TypeScript/build/lint, and Worker typecheck/bundling. It does not run browser or deployed integration tests.
@@ -127,14 +134,14 @@ This runs ICS scheduling regressions, frontend TypeScript/build/lint, and Worker
 
 **Frontend:** Deploy to any static hosting (Vercel, Netlify, Cloudflare Pages, GitHub Pages)
 ```bash
-npm run build
+yarn build
 # Deploy dist/ folder
 ```
 
 **Backend:** Deploy to Cloudflare Workers
 ```bash
 cd worker
-npm run deploy
+yarn deploy
 ```
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for production deployment procedures.

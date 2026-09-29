@@ -219,8 +219,8 @@ curl -X POST http://localhost:8787/api/admin/token/revoke \
 ## Development
 
 ```bash
-npm install
-npm run dev
+yarn install --frozen-lockfile
+yarn dev
 ```
 
 The local Worker runs at `http://localhost:8787`.
@@ -235,9 +235,9 @@ ADMIN_MASTER_TOKEN=<at-least-32-characters>
 
 Edit `wrangler.toml` to configure Durable Object bindings, migrations, KV namespace IDs, compatibility settings, and observability.
 
-The lockfile pins Wrangler `4.95.0` and esbuild `0.28.0`. The compatibility date remains `2024-01-01`; migrations `v1` and `v2` establish `CalendarDO` and `ActivationTokenDO`. Preserve deployed namespace bindings and secrets during updates. See [DEPLOYMENT.md](../DEPLOYMENT.md).
+Use Node.js 24 LTS and Yarn Classic 1.22.22. This directory is an independent Yarn project, not a workspace; run `yarn install --frozen-lockfile` here. The lockfile pins Wrangler `4.143.0`, undici `7.30.0`, and esbuild `0.28.2`; the manifest's Yarn resolution keeps undici on the patched `^7.30.0` range. The compatibility date remains `2024-01-01`; migrations `v1` and `v2` establish `CalendarDO` and `ActivationTokenDO`. Preserve deployed namespace bindings and secrets during updates. See [DEPLOYMENT.md](../DEPLOYMENT.md).
 
-Run `npm test` here for Worker typecheck and bundling. Run `npm test` at the repository root for the combined frontend and Worker checks. These commands do not execute live API tests.
+Run `yarn test` here for Worker typecheck and bundling. Run `yarn test` at the repository root for the combined frontend and Worker checks. These commands do not execute live API tests. For direct local CLI commands, use `yarn wrangler ...` here or `yarn --cwd worker wrangler ...` from the repository root.
 
 ## Testing Flow
 

@@ -32,10 +32,10 @@ binding = "USERS"
 id = "2cf943531ea04cbcb53b3c6f0a3a1a72"
 
 # Secrets
-# Set these using: wrangler secret put <SECRET_NAME>
+# Set these using: yarn wrangler secret put <SECRET_NAME>
 # For development, add to .dev.vars file
 # - ADMIN_MASTER_TOKEN: Master token for admin API authentication
 
 # Build configuration
 [build]
-command = "npm run build"
+command = "yarn build"
