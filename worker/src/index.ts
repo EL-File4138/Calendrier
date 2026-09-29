@@ -206,6 +206,41 @@ async function readJsonObject(request: Request, maxBytes = MAX_JSON_BODY_BYTES):
   }
 }
 
+async function handlePublicLink(request: Request, env: Env, manage: boolean): Promise<Response> {
+  const methodError = requireMethod(request, 'POST');
+  if (methodError) return methodError;
+  const body = await readJsonObject(request, 2048);
+  if (body instanceof Response) return body;
+  if (manage) {
+    if (typeof body.calendarId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.calendarId)) {
+      return Response.json({ error: 'Invalid calendar ID' }, { status: 400 });
+    }
+    if (!hasString(body, 'requesterId') || typeof body.action !== 'string' || !['status', 'create', 'revoke', 'purge'].includes(body.action)) {
+      return Response.json({ error: 'Invalid public link action' }, { status: 400 });
+    }
+    const authError = await verifyUserSession(request, env, body.requesterId);
+    if (authError) return authError;
+  } else if (typeof body.publicId !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.publicId) || typeof body.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.token)) {
+    return Response.json({ error: 'Invalid public link' }, { status: 400 });
+  }
+  let calendarId = body.calendarId as string;
+  if (!manage) {
+    const mapped = await env.CALENDAR_CACHE.get(`public-link:${body.publicId}`);
+    if (!mapped) return Response.json({ error: 'Public link unavailable' }, { status: 404 });
+    calendarId = mapped;
+  }
+  const stub = env.CALENDAR_DO.get(env.CALENDAR_DO.idFromName(calendarId));
+  const forwarded = manage ? { requesterId: body.requesterId, action: body.action } : { token: body.token };
+  const response = await stub.fetch(`https://do/public/${manage ? 'manage' : 'read'}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(forwarded),
+  });
+  if (!manage) return response;
+  const result = await response.clone().json() as { token?: string | null; publicId?: string | null; revokedPublicId?: string | null };
+  if (result.publicId) await env.CALENDAR_CACHE.put(`public-link:${result.publicId}`, calendarId);
+  if (result.revokedPublicId) await env.CALENDAR_CACHE.delete(`public-link:${result.revokedPublicId}`);
+  return response;
+}
+
 function parseUserCalendars(value: string | null): UserCalendarListEntry[] {
   if (!value) return [];
 
@@ -250,7 +285,9 @@ export default {
       let response: Response;
 
       // Authentication endpoints
-      if (path === '/api/user/create') {
+      if (path === '/api/public/read' || path === '/api/public/manage') {
+        response = await handlePublicLink(request, env, path.endsWith('/manage'));
+      } else if (path === '/api/user/create') {
         response = await handleCreateUser(request, env);
       } else if (path === '/api/user/logout') {
         response = await handleLogout(request, env);
@@ -296,6 +333,7 @@ export default {
         headers: {
           ...Object.fromEntries(response.headers.entries()),
           ...corsHeaders,
+          ...(path.startsWith('/api/public/') ? { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } : {}),
         },
       });
 
@@ -306,7 +344,7 @@ export default {
         JSON.stringify({ error: 'Internal server error' }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
         }
       );
     }

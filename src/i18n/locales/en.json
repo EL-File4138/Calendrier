@@ -280,6 +280,18 @@
     "tip": {
       "title": "Tip:",
       "message": "Create a user account and save your calendar to the server for easier sharing and real-time collaboration!"
+    },
+    "public": {
+      "title": "Public read-only link",
+      "description": "Anyone with this link can view a delayed read-only snapshot. Revoke it to disable access.",
+      "create": "Create public link",
+      "revoke": "Revoke public link",
+      "purge": "Refresh public snapshot",
+      "createSuccess": "Public link created.",
+      "revokeSuccess": "Public link revoked.",
+      "purgeSuccess": "Public snapshot cleared.",
+      "statusSuccess": "Public link status updated.",
+      "error": "Unable to update the public link."
     }
   },
   "urlHandler": {
@@ -296,6 +308,20 @@
     "importSucceeded": "Calendar imported successfully!"
   },
   "userPanel": {
+    "accountActionCancelled": "The account or connection mode changed before this operation completed.",
+    "workOffline": "Work offline",
+    "offlineHelp": "Keep this calendar as a local copy and stop syncing. Server access is retained. Reopen the calendar link to load the server version; offline edits are not merged automatically.",
+    "logout": "Log out",
+    "logoutHelp": "Logout removes credentials from this browser only. Other browsers and exported credentials remain usable until the token expires. Your current calendar stays as a local copy.",
+    "loggedOut": "Logged out. Your calendar is available locally.",
+    "logoutFailed": "Could not clear this browser’s account credentials. Try again.",
+    "exportCredentials": "Export credentials",
+    "exportCredentialsConfirm": "The downloaded file grants access to your account. Keep it private.",
+    "importCredentialsConfirm": "Import replaces this browser’s account credentials. Your calendar stays unchanged. Expired or revoked sessions cannot be restored.",
+    "importCredentials": "Import credentials",
+    "credentialsLocalOnly": "Credential import is available in local mode only.",
+    "credentialsImported": "Credentials imported. Session validity will be checked when you access a server calendar.",
+    "credentialsImportFailed": "Could not import credentials. Choose a valid Calendrier credential file for this server (up to 4 KB) while in local mode.",
     "userStatus": "User Status",
     "close": "Close",
     "createAccount": "Create Account",
@@ -379,5 +405,12 @@
     "time": "Enter a valid time.",
     "interval": "Enter a whole number of weeks, at least 1.",
     "dateList": "Enter valid dates separated by commas (YYYY-MM-DD)."
+  },
+  "publicShare": {
+    "viewTitle": "Public calendar",
+    "viewHelp": "Read-only shared view. Updates may be delayed.",
+    "readOnly": "Read only",
+    "return": "Return to saved calendar",
+    "unavailable": "This public link is unavailable or has been revoked."
   }
 }

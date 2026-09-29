@@ -1,5 +1,5 @@
 import i18n from '../i18n/config';
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Course, CalendarData, Settings, Weekday, SessionSchedule, SessionOverride, AcademicCalendar, AcademicPeriodKind } from '../types/Course';
 import type { WSUpdateMessage, WSPresenceMessage } from '../api/types';
@@ -35,7 +35,7 @@ const safeLocalStorage = {
   },
 };
 
-type SyncMode = 'local' | 'server';
+type SyncMode = 'local' | 'server' | 'public';
 
 interface CalendarContextType {
   // Data
@@ -76,6 +76,8 @@ interface CalendarContextType {
   // Server operations
   createServerCalendar: () => Promise<string>;
   registerUserSession: (userId: string, sessionToken: string) => Promise<void>;
+  workOffline: () => void;
+  logout: () => Promise<void>;
   loadServerCalendar: (calendarId: string) => Promise<void>;
   syncToServer: () => Promise<void>;
   deleteCalendar: () => Promise<void>;
@@ -199,6 +201,33 @@ const sanitizeCalendarData = (value: unknown): CalendarData => {
   };
 };
 
+// Public views use an isolated read-only provider with no account or server state.
+export const PublicCalendarProvider = ({ children, data, version }: { children: ReactNode; data: CalendarData; version: number }) => {
+  const clean = useMemo(() => sanitizeCalendarData(data), [data]);
+  const [darkMode, setDarkMode] = useState(false);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark-mode', darkMode);
+    document.documentElement.classList.toggle('pf-v6-theme-dark', darkMode);
+  }, [darkMode]);
+  const unavailable = async (): Promise<never> => { throw new Error('Public calendars are read-only'); };
+  const value: CalendarContextType = {
+    courses: clean.courses,
+    title: clean.title ?? i18n.t('calendar.defaultTitle'),
+    settings: clean.settings ?? defaultSettings,
+    darkMode,
+    syncMode: 'public', userId: null, sessionToken: null, calendarId: null, isRegistered: false,
+    isLoaded: true, hasWriteAccess: false, isSyncing: false, lastSyncError: null, localError: null, version,
+    dismissSyncError: () => {}, dismissLocalError: () => {}, activeUsers: [],
+    addCourse: unavailable, updateCourse: unavailable, deleteCourse: unavailable, duplicateCourse: unavailable,
+    updateTitle: unavailable, updateSettings: unavailable, toggleDarkMode: () => setDarkMode((current) => !current), newCalendar: unavailable, importData: unavailable,
+    exportData: () => JSON.stringify(clean), createServerCalendar: unavailable,
+    registerUserSession: unavailable, workOffline: () => {}, logout: unavailable,
+    loadServerCalendar: unavailable, syncToServer: unavailable, deleteCalendar: unavailable,
+    grantAccess: unavailable, revokeAccess: unavailable, listPrivileges: unavailable,
+  };
+  return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>;
+};
+
 export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -225,6 +254,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const syncStateRef = useRef({ syncMode, calendarId, userId, sessionToken });
+  const sessionGenerationRef = useRef(0);
 
   // Refs to always access latest state in callbacks
   const latestDataRef = useRef({ title, courses, settings, version });
@@ -249,6 +279,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   // Load from localStorage on mount
   useEffect(() => {
     const initializeCalendar = async () => {
+      const generation = sessionGenerationRef.current;
       try {
         // Load user ID
         const savedUserId = safeLocalStorage.getItem(USER_ID_KEY);
@@ -273,6 +304,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
           // Load calendar from server
           try {
             const response = await calendarAPI.readCalendar(savedCalendarId, savedUserId, savedSessionToken);
+            if (generation !== sessionGenerationRef.current) return;
             setCourses(response.data.courses);
             if (response.data.title) setTitle(response.data.title);
             if (response.data.settings) setSettings({ ...defaultSettings, ...response.data.settings });
@@ -280,6 +312,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
             setHasWriteAccess(response.hasWriteAccess);
             setHasCalendarAccess(true);
           } catch (error) {
+            if (generation !== sessionGenerationRef.current) return;
             console.error('Failed to load saved calendar:', error);
             setSyncMode('local');
             safeLocalStorage.removeItem(CALENDAR_ID_KEY);
@@ -406,6 +439,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       };
 
       ws.onmessage = (event) => {
+        if (syncStateRef.current.syncMode !== 'server' || wsRef.current !== ws) return;
         const message = JSON.parse(event.data);
 
         if (message.type === 'update') {
@@ -470,7 +504,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const syncToServer = useCallback(async () => {
-    if (syncMode !== 'server' || !calendarId || !userId || !sessionToken || !hasWriteAccess) {
+    const generation = sessionGenerationRef.current;
+    if (syncStateRef.current.syncMode !== 'server' || syncStateRef.current.calendarId !== calendarId || syncMode !== 'server' || !calendarId || !userId || !sessionToken || !hasWriteAccess) {
       return;
     }
 
@@ -482,6 +517,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       const { title: currentTitle, courses: currentCourses, settings: currentSettings, version: currentVersion } = latestDataRef.current;
       const data: CalendarData = { title: currentTitle, courses: currentCourses, settings: currentSettings };
       const response = await calendarAPI.writeCalendar(calendarId, userId, sessionToken, data, currentVersion);
+      if (generation !== sessionGenerationRef.current || syncStateRef.current.syncMode !== 'server' || syncStateRef.current.calendarId !== calendarId) return;
 
       if (response.success) {
         setVersion(response.version);
@@ -491,10 +527,11 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: unknown) {
       console.error('Failed to sync to server:', error);
+      if (generation !== sessionGenerationRef.current || syncStateRef.current.syncMode !== 'server' || syncStateRef.current.calendarId !== calendarId) return;
       const errorMessage = error instanceof Error ? error.message : String(error);
       setLastSyncError(errorMessage);
     } finally {
-      setIsSyncing(false);
+      if (generation === sessionGenerationRef.current) setIsSyncing(false);
     }
   }, [syncMode, calendarId, userId, sessionToken, hasWriteAccess]);
 
@@ -595,6 +632,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const newCalendar = async () => {
+    // Invalidate any in-flight server load before switching to a new local calendar.
+    sessionGenerationRef.current += 1;
+
     // Auto-revoke from current calendar if in server mode
     if (syncMode === 'server' && calendarId && userId) {
       try {
@@ -654,6 +694,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createServerCalendar = async (): Promise<string> => {
+    const generation = sessionGenerationRef.current;
     if (!userId || !sessionToken) {
       throw new Error(i18n.t('toolbar.saveToServerError'));
     }
@@ -670,8 +711,10 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      if (generation !== sessionGenerationRef.current) throw new Error(i18n.t('userPanel.accountActionCancelled'));
       const data: CalendarData = { title, courses, settings };
       const response = await calendarAPI.createCalendar(userId, sessionToken, data);
+      if (generation !== sessionGenerationRef.current) throw new Error(i18n.t('userPanel.accountActionCancelled'));
       setCalendarId(response.calendarId);
       setSyncMode('server');
       setHasWriteAccess(true);
@@ -693,6 +736,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loadServerCalendar = async (calId: string): Promise<void> => {
+    const generation = sessionGenerationRef.current;
     // Auto-revoke from current calendar if switching
     const previousCalendarId = calendarId;
     if (syncMode === 'server' && previousCalendarId && previousCalendarId !== calId && userId && sessionToken) {
@@ -705,7 +749,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      if (generation !== sessionGenerationRef.current) return;
       const response = await calendarAPI.readCalendar(calId, userId || undefined, sessionToken || undefined);
+      if (generation !== sessionGenerationRef.current) return;
       setCourses(response.data.courses);
       if (response.data.title) setTitle(response.data.title);
       if (response.data.settings) setSettings(response.data.settings);
@@ -802,7 +848,80 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const workOffline = useCallback(() => {
+    sessionGenerationRef.current += 1;
+    syncStateRef.current = { ...syncStateRef.current, syncMode: 'local', calendarId: null };
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setSyncMode('local');
+    setCalendarId(null);
+    setHasWriteAccess(false);
+    setHasCalendarAccess(false);
+    setActiveUsers([]);
+    setIsSyncing(false);
+    setLastSyncError(null);
+    setVersion(1);
+    safeLocalStorage.removeItem(CALENDAR_ID_KEY);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('calendar');
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage ||
+          (event.key !== null && ![USER_ID_KEY, SESSION_TOKEN_KEY, USER_REGISTERED_KEY].includes(event.key))) return;
+      const storedUserId = safeLocalStorage.getItem(USER_ID_KEY);
+      const storedToken = safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+      const nextUserId = storedUserId && storedToken ? storedUserId : null;
+      const nextToken = nextUserId ? storedToken : null;
+      if (syncStateRef.current.userId === nextUserId && syncStateRef.current.sessionToken === nextToken) return;
+      workOffline();
+      syncStateRef.current = { syncMode: 'local', calendarId: null, userId: nextUserId, sessionToken: nextToken };
+      setUserId(nextUserId);
+      setSessionToken(nextToken);
+      setIsRegistered(Boolean(nextUserId));
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [workOffline]);
+
+  const logout = async () => {
+    const currentUserId = userId;
+    const currentSessionToken = sessionToken;
+    let logoutError: unknown;
+    if (currentUserId && currentSessionToken) {
+      try {
+        await calendarAPI.logout(currentUserId, currentSessionToken);
+      } catch (error) {
+        logoutError = error;
+      }
+    }
+
+    workOffline();
+    setUserId(null);
+    setSessionToken(null);
+    setIsRegistered(false);
+    syncStateRef.current = { syncMode: 'local', calendarId: null, userId: null, sessionToken: null };
+    safeLocalStorage.removeItem(USER_ID_KEY);
+    safeLocalStorage.removeItem(SESSION_TOKEN_KEY);
+    safeLocalStorage.removeItem(USER_REGISTERED_KEY);
+
+    if (logoutError) throw logoutError;
+  };
+
   const registerUserSession = async (nextUserId: string, nextSessionToken: string): Promise<void> => {
+    if (syncStateRef.current.syncMode === 'server') {
+      throw new Error(i18n.t('userPanel.credentialsLocalOnly'));
+    }
+    sessionGenerationRef.current += 1;
+    syncStateRef.current = { ...syncStateRef.current, userId: nextUserId, sessionToken: nextSessionToken };
     setUserId(nextUserId);
     setSessionToken(nextSessionToken);
     setIsRegistered(true);
@@ -843,6 +962,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         importData,
         createServerCalendar,
         registerUserSession,
+        workOffline,
+        logout,
         loadServerCalendar,
         syncToServer,
         deleteCalendar,

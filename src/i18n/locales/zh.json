@@ -236,6 +236,18 @@
     "tip": {
       "title": "提示：",
       "message": "创建用户账户并将日历保存到服务器，以便更轻松地分享和实时协作！"
+    },
+    "public": {
+      "title": "公开只读链接",
+      "description": "拥有此链接的任何人都可以查看有延迟的只读快照。撤销链接即可停止访问。",
+      "create": "创建公开链接",
+      "revoke": "撤销公开链接",
+      "purge": "刷新公开快照",
+      "createSuccess": "已创建公开链接。",
+      "revokeSuccess": "已撤销公开链接。",
+      "purgeSuccess": "已清除公开快照。",
+      "statusSuccess": "已更新公开链接状态。",
+      "error": "无法更新公开链接。"
     }
   },
   "urlHandler": {
@@ -252,6 +264,20 @@
     "importSucceeded": "日历导入成功！"
   },
   "userPanel": {
+    "accountActionCancelled": "操作完成前，账户或连接模式已更改。",
+    "workOffline": "离线使用",
+    "offlineHelp": "保留此日历的本地副本并停止同步，服务器访问权限不变。重新打开日历链接可加载服务器版本；离线修改不会自动合并。",
+    "logout": "退出登录",
+    "logoutHelp": "退出登录仅清除此浏览器的凭据，其他浏览器及已导出的凭据在令牌过期前仍可使用。当前日历将保留为本地副本。",
+    "loggedOut": "已退出登录，日历已保留在本地。",
+    "logoutFailed": "无法清除此浏览器的账户凭据，请重试。",
+    "exportCredentials": "导出凭据",
+    "importCredentials": "导入凭据",
+    "exportCredentialsConfirm": "下载的文件可用于访问您的账户，请妥善保密。",
+    "importCredentialsConfirm": "导入将替换此浏览器的账户凭据，日历保持不变。已过期或已撤销的会话无法恢复。",
+    "credentialsLocalOnly": "仅可在本地模式下导入凭据。",
+    "credentialsImported": "凭据已导入。访问服务器日历时将验证会话是否有效。",
+    "credentialsImportFailed": "无法导入凭据。请在本地模式下选择适用于此服务器的有效 Calendrier 凭据文件（不超过 4 KB）。",
     "userStatus": "用户状态",
     "close": "关闭",
     "createAccount": "创建账户",
@@ -361,5 +387,12 @@
     "time": "请输入有效时间。",
     "interval": "请输入大于或等于 1 的整数周数。",
     "dateList": "请输入以逗号分隔的有效日期（YYYY-MM-DD）。"
+  },
+  "publicShare": {
+    "viewTitle": "公开日历",
+    "viewHelp": "共享只读视图，更新可能会延迟。",
+    "readOnly": "只读",
+    "return": "返回已保存日历",
+    "unavailable": "此公开链接不可用或已被撤销。"
   }
 }

@@ -1,10 +1,11 @@
 import TextInput from './ValidatedTextInput';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Form,
   FormGroup,
   Button,
+  ButtonVariant,
   Label,
   Spinner,
   Popover,
@@ -12,20 +13,25 @@ import {
 } from '@patternfly/react-core';
 import { UserIcon } from '@patternfly/react-icons';
 import { useCalendar } from '../context/CalendarContext';
-import { calendarAPI } from '../api/client';
+import { calendarAPI, WORKER_URL } from '../api/client';
+import { MAX_CREDENTIAL_FILE_BYTES, parseCredentials, type CredentialBackup } from '../utils/credentials';
 import { CopyableId } from './CopyableId';
 import InlineAlert from './InlineAlert';
+import ConfirmDialog from './ConfirmDialog';
 import './UserPanel.css';
 
 export const UserPanel = () => {
   const { t } = useTranslation();
   const {
     userId,
+    sessionToken,
     syncMode,
     isSyncing,
     lastSyncError,
     dismissSyncError,
     registerUserSession,
+    workOffline,
+    logout,
   } = useCalendar();
 
   const [tokenSubmitted, setTokenSubmitted] = useState(false);
@@ -34,6 +40,51 @@ export const UserPanel = () => {
   const [activationToken, setActivationToken] = useState('');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [feedback, setFeedback] = useState<{ title: string; variant: 'danger' | 'success' } | null>(null);
+  const credentialInput = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [confirmation, setConfirmation] = useState<'exportCredentials' | 'importCredentials' | 'workOffline' | 'logout' | null>(null);
+  const confirmAction = (action: NonNullable<typeof confirmation>) => {
+    setShowPanel(false);
+    setConfirmation(action);
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setFeedback({ title: t('userPanel.loggedOut'), variant: 'success' });
+    } catch {
+      setFeedback({ title: t('userPanel.logoutFailed'), variant: 'danger' });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const exportCredentials = () => {
+    if (!userId || !sessionToken) return;
+    const backup: CredentialBackup = { format: 'calendrier-credentials', version: 1, serverUrl: WORKER_URL, userId, sessionToken };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'calendrier-credentials.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const importCredentials = async (file: File) => {
+    setIsImporting(true);
+    try {
+      if (file.size > MAX_CREDENTIAL_FILE_BYTES) throw new Error('File too large');
+      const backup = parseCredentials(await file.text(), WORKER_URL);
+      await registerUserSession(backup.userId, backup.sessionToken);
+      setFeedback({ title: t('userPanel.credentialsImported'), variant: 'success' });
+    } catch {
+      setFeedback({ title: t('userPanel.credentialsImportFailed'), variant: 'danger' });
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleCreateUser = async () => {
     setTokenSubmitted(true);
@@ -77,6 +128,7 @@ export const UserPanel = () => {
   };
 
   return (
+    <>
     <Popover
       isVisible={showPanel}
       shouldClose={() => setShowPanel(false)}
@@ -84,13 +136,12 @@ export const UserPanel = () => {
       headerContent={!userId ? t('userPanel.createAccount') : getStatusText()}
       headerIcon={<UserIcon aria-hidden="true" />}
       closeBtnAriaLabel={t('share.close')}
-      footerContent={t(userId ? 'userPanel.footerHasUser' : 'userPanel.footerNoUser')}
       bodyContent={
         <div className="user-section">
+          {feedback && <InlineAlert onClose={() => setFeedback(null)} title={feedback.title} variant={feedback.variant} />}
           {!userId ? (
             <>
               <p>{t('userPanel.createAccountHelp')}</p>
-              {feedback && <InlineAlert onClose={() => setFeedback(null)} title={feedback.title} variant={feedback.variant} />}
               <Form className="user-panel-form" noValidate onSubmit={(event) => { event.preventDefault(); void handleCreateUser(); }}>
                 <FormGroup label={t('userPanel.tokenPlaceholder')} fieldId="account-activation-token" isRequired>
                   <TextInput
@@ -114,7 +165,7 @@ export const UserPanel = () => {
                 <Button
                   variant="primary"
                   type="submit"
-                  isDisabled={isCreatingUser}
+                   isDisabled={isCreatingUser || isImporting || isLoggingOut}
                   isLoading={isCreatingUser}
                 >
                   {isCreatingUser ? t('userPanel.creating') : t('userPanel.createAccount')}
@@ -148,6 +199,19 @@ export const UserPanel = () => {
               )}
             </>
           )}
+          <div className="user-panel-form">
+            <div className="user-panel-credential-actions">
+              {userId && sessionToken && <Button variant="secondary" onClick={() => confirmAction('exportCredentials')}>{t('userPanel.exportCredentials')}</Button>}
+              <Button variant="secondary" isDisabled={syncMode === 'server' || isImporting || isCreatingUser || isLoggingOut} isLoading={isImporting} onClick={() => confirmAction('importCredentials')}>{t('userPanel.importCredentials')}</Button>
+            </div>
+            {syncMode === 'server' && <p>{t('userPanel.credentialsLocalOnly')}</p>}
+            {syncMode === 'server' && <>
+              <Button className="user-panel-account-action" variant="secondary" onClick={() => confirmAction('workOffline')}>{t('userPanel.workOffline')}</Button>
+            </>}
+            {userId && <>
+              <Button className="user-panel-account-action" variant="danger" isDisabled={isLoggingOut || isImporting} isLoading={isLoggingOut} onClick={() => confirmAction('logout')}>{t('userPanel.logout')}</Button>
+            </>}
+          </div>
         </div>
       }
       position={PopoverPosition.bottomEnd}
@@ -168,5 +232,28 @@ export const UserPanel = () => {
         </span>
       </Button>
     </Popover>
+    <input ref={credentialInput} type="file" accept=".json,application/json" hidden onChange={(event) => {
+      const file = event.currentTarget.files?.[0];
+      event.currentTarget.value = '';
+      if (file) { setShowPanel(true); void importCredentials(file); }
+    }} />
+    {confirmation && <ConfirmDialog
+      title={t(`userPanel.${confirmation}`)}
+      message={t(`userPanel.${confirmation === 'workOffline' ? 'offlineHelp' : confirmation === 'logout' ? 'logoutHelp' : `${confirmation}Confirm`}`)}
+      confirmText={t(`userPanel.${confirmation}`)}
+      confirmVariant={confirmation === 'logout' ? ButtonVariant.danger : ButtonVariant.primary}
+      cancelText={t('settings.cancel')}
+      onCancel={() => { setConfirmation(null); setShowPanel(true); }}
+      onConfirm={() => {
+        const action = confirmation;
+        setConfirmation(null);
+        setShowPanel(true);
+        if (action === 'exportCredentials') exportCredentials();
+        else if (action === 'importCredentials') credentialInput.current?.click();
+        else if (action === 'workOffline') workOffline();
+        else void handleLogout();
+      }}
+    />}
+    </>
   );
 };

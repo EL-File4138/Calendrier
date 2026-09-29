@@ -2,12 +2,14 @@
 
 This document provides procedures for deploying Calendrier to production.
 
+Release candidates: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
+
 ## Prerequisites
 
 **Required:**
-- Node.js 18+ and npm
+- Node.js 22.12+ and npm
 - Cloudflare account (for backend)
-- Wrangler CLI. The checked local package version is `4.95.0`.
+- Wrangler CLI is installed from the Worker lockfile (`4.95.0`); use the local script instead of a global install.
 
 **Optional:**
 - Vercel/Netlify account (for frontend hosting)
@@ -17,7 +19,7 @@ This document provides procedures for deploying Calendrier to production.
 
 ## Backend Deployment (Cloudflare Workers)
 
-### 1. Authenticate with Cloudflare
+### 1. Authenticate with Cloudflare (CLI workflow)
 
 ```bash
 wrangler login
@@ -25,7 +27,7 @@ wrangler login
 
 Follow the browser prompt to authorize Wrangler.
 
-### 2. Create KV Namespaces
+### 2. Create KV Namespaces (new environments only)
 
 ```bash
 cd worker
@@ -43,9 +45,11 @@ wrangler kv namespace create "USERS" --preview
 
 Copy the namespace IDs from the output.
 
+This repository already has production IDs in `worker/wrangler.toml`. Do not create replacement namespaces during a routine release. Preserve the existing Durable Object migrations (`v1` and `v2`) and bindings.
+
 ### 3. Configure KV Namespace IDs
 
-Edit `worker/wrangler.toml` and update the namespace IDs:
+For a new environment, edit `worker/wrangler.toml` and update the namespace IDs:
 
 ```toml
 [[kv_namespaces]]
@@ -72,7 +76,7 @@ Generate a secure token:
 openssl rand -hex 32
 ```
 
-Set it as a Cloudflare secret:
+Set it as a Cloudflare secret only when provisioning a new environment or rotating the existing secret:
 
 ```bash
 wrangler secret put ADMIN_MASTER_TOKEN
@@ -84,12 +88,12 @@ Paste the generated token when prompted. The token must be at least 32 character
 
 ```bash
 cd worker
-npm install
-npm run build
-wrangler deploy
+npm ci
+npm test
+npm run deploy
 ```
 
-Note the deployed worker URL (e.g., `https://calendrier-worker.your-subdomain.workers.dev`).
+The current deployment target is `https://calendrier-worker.elfile4138.workers.dev`. Confirm the URL after deployment if the account subdomain changes.
 
 If Wrangler reports multiple available accounts in non-interactive mode, configure `account_id` in `worker/wrangler.toml` or set `CLOUDFLARE_ACCOUNT_ID` for the target account before deploying.
 
@@ -114,6 +118,8 @@ Save the returned token value for user registration.
 
 ## Frontend Deployment
 
+Deploy the Worker before building the frontend. Upload the resulting `dist/` directory to the frontend host.
+
 ### 1. Configure Environment
 
 Update `.env` with your worker URL:
@@ -131,9 +137,11 @@ VITE_WORKER_URL=https://your-worker-url.workers.dev
 ### 2. Build Frontend
 
 ```bash
-npm install
+npm ci
 npm run build
 ```
+
+The build output is `dist/`. Set `VITE_WORKER_URL` to the deployed Worker URL at build time. The service worker caches static shell assets under a release-specific cache name and excludes `/api/` requests; public snapshot refreshes therefore require network access.
 
 ### 3. Deploy to Hosting Platform
 
@@ -179,6 +187,16 @@ curl https://your-worker-url.workers.dev/api/admin/token/create \
 
 Expected response: `{"success":false,"error":"Unauthorized - Invalid admin token"}`
 
+Also verify public input handling:
+
+```bash
+curl -i https://calendrier-worker.elfile4138.workers.dev/api/public/read \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The deployed router currently returns `404` for `/api/public/read` without a valid link body; management input validation returns `400` with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Use the public-link flow in the frontend for an authenticated end-to-end check.
+
 Test token creation works:
 
 ```bash
@@ -198,6 +216,7 @@ Open your deployed frontend URL in a browser and verify:
 2. All static assets load via HTTPS
 3. Server-mode account creation accepts a valid activation token
 4. Calendar create/read/write actions work with the returned `sessionToken`
+5. Public links render read-only data without loading the viewer's private account or calendar
 
 ### Integration Testing
 

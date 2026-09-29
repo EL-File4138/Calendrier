@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 // Configure your Worker URL here
-const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787';
+export const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787';
 
 async function responseErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -62,6 +62,35 @@ export class CalendarAPI {
     }
 
     return response.json();
+  }
+
+  async managePublicLink(calendarId: string, requesterId: string, sessionToken: string, action: 'status' | 'create' | 'revoke' | 'purge'): Promise<{ token: string | null; publicId: string | null }> {
+    const response = await fetch(`${this.workerUrl}/api/public/manage`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ calendarId, requesterId, action }),
+    });
+    if (!response.ok) throw new Error(await responseErrorMessage(response, 'Failed to manage public link'));
+    const result: unknown = await response.json();
+    if (!result || typeof result !== 'object' || !('token' in result) || !('publicId' in result) || (result.token !== null && (typeof result.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(result.token))) || (result.publicId !== null && (typeof result.publicId !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(result.publicId)))) {
+      throw new Error('Invalid public link response');
+    }
+    return { token: result.token, publicId: result.publicId };
+  }
+
+  async readPublicCalendar(publicId: string, token: string, signal?: AbortSignal): Promise<ReadCalendarResponse> {
+    const response = await fetch(`${this.workerUrl}/api/public/read`, {
+      method: 'POST', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ publicId, token }),
+    });
+    if (!response.ok) throw new Error('Public link unavailable');
+    const result = await response.json() as ReadCalendarResponse;
+    if (!result || !result.data || !Array.isArray(result.data.courses) || typeof result.version !== 'number' || typeof result.updatedAt !== 'number') {
+      throw new Error('Invalid public calendar response');
+    }
+    return result;
   }
 
   /**

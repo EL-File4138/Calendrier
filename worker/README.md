@@ -2,6 +2,8 @@
 
 Cloudflare Worker backend for Calendrier multi-user calendar synchronization.
 
+Release candidate: `1.0.1-rc.2`, paired with frontend `0.1.0-rc.2`.
+
 ## Features
 
 - Durable Objects for per-calendar document authority and WebSocket coordination.
@@ -10,6 +12,7 @@ Cloudflare Worker backend for Calendrier multi-user calendar synchronization.
 - WebSocket updates authenticated with `Sec-WebSocket-Protocol`.
 - Privilege-based access control: `owner`, `write`, and `read`.
 - Optimistic locking using document versions.
+- Revocable public read-only links backed by a short-lived Durable Object snapshot.
 
 ## Architecture
 
@@ -21,7 +24,7 @@ Activation token consumption is serialized through `ActivationTokenDO`, keyed by
 
 ### KV Namespaces
 
-- `CALENDAR_CACHE`: Legacy namespace retained to delete stale anonymous-cache entries on calendar write/delete. New reads require authentication and go directly to Durable Objects.
+- `CALENDAR_CACHE`: Maps `public-link:{publicId}` to calendar IDs and supports cleanup of legacy `calendar:{calendarId}` cache entries. Public snapshots are stored inside the calendar Durable Object.
 - `ACTIVATION_TOKENS`: Stores activation-token records at `token:{token}`.
 - `USERS`: Stores user records, session token hashes, registration markers, and user calendar metadata at `user-calendars:{userId}`.
 
@@ -59,6 +62,8 @@ Response:
 #### POST `/api/user/logout`
 
 Delete the current user's session token.
+
+Requires the current session bearer token. The frontend attempts server invalidation before clearing local credentials, and clears local credentials even if the request fails. Existing WebSockets are not explicitly closed by this endpoint; the logging-out frontend closes its own connection.
 
 Request:
 
@@ -99,7 +104,7 @@ Response:
 
 #### GET `/api/calendar/read?calendarId={id}&userId={userId}`
 
-Read a calendar. Requires a registered user session and read access. Anonymous reads are not supported.
+Read a private calendar. Requires a registered user session and read access. Public reads use the separate endpoint below.
 
 ```bash
 curl -X GET "http://localhost:8787/api/calendar/read?calendarId=CALENDAR_ID&userId=USER_ID" \
@@ -135,6 +140,13 @@ Version conflicts currently return HTTP 200 with `success: false`, the current s
 #### POST `/api/calendar/delete`
 
 Delete a calendar. Requires owner access. The Worker removes the calendar from user calendar lists, destroys Durable Object storage, deletes legacy cache entries, and closes WebSocket connections.
+
+### Public Links
+
+- `POST /api/public/manage`: owner session required; body `{ calendarId, requesterId, action }`, where `action` is `status`, `create`, `revoke`, or `purge`. Returns `{ token, publicId }`, with null values when no link exists. Creation returns an existing link if already enabled; revoke and create again to replace it.
+- `POST /api/public/read`: no account required; body `{ publicId, token }`. Returns `{ data, version, hasWriteAccess: false, updatedAt }`. Both identifiers are 43-character base64url strings. Invalid or unavailable links fail without exposing private calendar data.
+- The frontend link stores both values in `#public=<publicId>.<token>`. Anyone holding the link can read its snapshot. Requests use POST bodies, omit account credentials, and public responses set `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- Each read checks the current Durable Object token before using its snapshot cache. Snapshots expire after 60 seconds and writes, purge, or revoke invalidate them. The viewer polls every 60 seconds. KV routing changes may take time to propagate, but stale routing cannot bypass the Durable Object token check.
 
 ### Privilege Management
 
@@ -223,9 +235,9 @@ ADMIN_MASTER_TOKEN=<at-least-32-characters>
 
 Edit `wrangler.toml` to configure Durable Object bindings, migrations, KV namespace IDs, compatibility settings, and observability.
 
-Installed Wrangler version checked during M2: `4.95.0`. Worker bundling uses `esbuild` `0.28.0`. The config schema includes `build`, `compatibility_flags`, `new_classes`, `new_sqlite_classes`, and `observability`; `build.upload` is deprecated and is not used by this project.
+The lockfile pins Wrangler `4.95.0` and esbuild `0.28.0`. The compatibility date remains `2024-01-01`; migrations `v1` and `v2` establish `CalendarDO` and `ActivationTokenDO`. Preserve deployed namespace bindings and secrets during updates. See [DEPLOYMENT.md](../DEPLOYMENT.md).
 
-`npm exec -- wrangler deploy --dry-run` succeeds locally with Wrangler 4 and exits before upload.
+Run `npm test` here for Worker typecheck and bundling. Run `npm test` at the repository root for the combined frontend and Worker checks. These commands do not execute live API tests.
 
 ## Testing Flow
 

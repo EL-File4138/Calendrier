@@ -1,6 +1,6 @@
 {
   "name": "calendrier-worker",
-  "version": "1.0.1-rc.1",
+  "version": "1.0.1-rc.2",
   "description": "Cloudflare Worker for Calendrier multi-user sync",
   "main": "src/index.ts",
   "scripts": {

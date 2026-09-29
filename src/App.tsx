@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bullseye, Spinner } from '@patternfly/react-core';
 import { CalendarProvider } from './context/CalendarContext';
@@ -11,6 +11,7 @@ import { URLHandler } from './components/URLHandler';
 import { useCalendar } from './context/CalendarContext';
 import type { Weekday } from './types/Course';
 import './App.css';
+import PublicCalendarView from './components/PublicCalendarView';
 
 function AppContent() {
   const { t } = useTranslation();
@@ -83,11 +84,16 @@ function AppContent() {
 }
 
 function App() {
-  return (
-    <CalendarProvider>
-      <AppContent />
-    </CalendarProvider>
-  );
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const updateHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', updateHash);
+    return () => window.removeEventListener('hashchange', updateHash);
+  }, []);
+  if (new URLSearchParams(hash.slice(1)).has('public')) {
+    return <PublicCalendarView key={hash} hash={hash} />;
+  }
+  return <CalendarProvider><AppContent /></CalendarProvider>;
 }
 
 export default App;

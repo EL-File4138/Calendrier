@@ -197,6 +197,61 @@ export class CalendarDO {
     };
   }
 
+  private async managePublicLink(requesterId: string, action: string): Promise<Response> {
+    return this.withMutex(async () => {
+      if (!this.document) return Response.json({ error: 'Calendar not found' }, { status: 404 });
+      if (!this.hasPrivilege(requesterId, 'owner')) {
+        return Response.json({ error: 'Only owners can manage public links' }, { status: 403 });
+      }
+      let token = await this.state.storage.get<string>('publicToken');
+      let publicId = await this.state.storage.get<string>('publicId');
+      const revokedPublicId = action === 'revoke' ? publicId : undefined;
+      if (token && !publicId && action !== 'revoke') {
+        const idBytes = crypto.getRandomValues(new Uint8Array(32));
+        publicId = btoa(String.fromCharCode(...idBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+        await this.state.storage.put('publicId', publicId);
+      }
+      if (action === 'create' && !token) {
+        const bytes = crypto.getRandomValues(new Uint8Array(32));
+        token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+        const idBytes = crypto.getRandomValues(new Uint8Array(32));
+        publicId = btoa(String.fromCharCode(...idBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+        await this.state.storage.put('publicToken', token);
+        await this.state.storage.put('publicId', publicId);
+      } else if (action === 'revoke') {
+        await this.state.storage.delete(['publicToken', 'publicId', 'publicSnapshot']);
+        token = undefined;
+        publicId = undefined;
+      } else if (action === 'purge') {
+        await this.state.storage.delete('publicSnapshot');
+      }
+      return Response.json({ token: token ?? null, publicId: publicId ?? null, revokedPublicId: revokedPublicId ?? null });
+    });
+  }
+
+  private async readPublic(token: string): Promise<Response> {
+    return this.withMutex(async () => {
+      const expected = await this.state.storage.get<string>('publicToken');
+      // Authorization always precedes the snapshot cache, including after revocation.
+      let difference = expected ? expected.length ^ token.length : 1;
+      for (let index = 0; index < 43; index++) {
+        difference |= (expected?.charCodeAt(index) || 0) ^ (token.charCodeAt(index) || 0);
+      }
+      if (!this.document || difference !== 0) {
+        return Response.json({ error: 'Public link unavailable' }, { status: 404 });
+      }
+      let snapshot = await this.state.storage.get<{ response: ReadCalendarResponse; expiresAt: number }>('publicSnapshot');
+      if (!snapshot || snapshot.expiresAt <= Date.now()) {
+        snapshot = {
+          response: { data: this.document.data, version: this.document.version, updatedAt: this.document.updatedAt, hasWriteAccess: false },
+          expiresAt: Date.now() + 60_000,
+        };
+        await this.state.storage.put('publicSnapshot', snapshot);
+      }
+      return Response.json(snapshot.response);
+    });
+  }
+
   /**
    * Write calendar data with optimistic locking
    */
@@ -463,6 +518,7 @@ export class CalendarDO {
     if (!this.document) return;
 
     try {
+      await this.state.storage.delete('publicSnapshot');
       await this.env.CALENDAR_CACHE.delete(`calendar:${this.document.id}`);
     } catch (error) {
       console.error('Failed to update cache:', error);
@@ -534,6 +590,18 @@ export class CalendarDO {
         if (body instanceof Response) return body;
 
         switch (path) {
+          case '/public/read': {
+            if (typeof body.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.token)) {
+              return Response.json({ error: 'Invalid public link' }, { status: 400 });
+            }
+            return await this.readPublic(body.token);
+          }
+          case '/public/manage': {
+            if (!hasString(body, 'requesterId') || typeof body.action !== 'string' || !['status', 'create', 'revoke', 'purge'].includes(body.action)) {
+              return Response.json({ error: 'Invalid public link action' }, { status: 400 });
+            }
+            return await this.managePublicLink(body.requesterId, body.action);
+          }
           case '/initialize':
             {
               if (!hasString(body, 'calendarId') || !hasString(body, 'ownerId') || !isCalendarDataValid(body.data)) {

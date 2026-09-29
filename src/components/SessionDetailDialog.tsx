@@ -20,7 +20,7 @@ interface SessionDetailDialogProps {
   session: Session;
   timeFormat: TimeFormat;
   onClose: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 const SessionDetailDialog = ({
@@ -89,9 +89,9 @@ const SessionDetailDialog = ({
       </DescriptionList>
       </ModalBody>
       <ModalFooter>
-        <Button key="edit" variant={ButtonVariant.primary} onClick={onEdit}>
+        {onEdit && <Button key="edit" variant={ButtonVariant.primary} onClick={onEdit}>
           {t('sessionDetail.editCourse')}
-        </Button>
+        </Button>}
         <Button key="close" variant={ButtonVariant.link} onClick={onClose}>
           {t('sessionDetail.close')}
         </Button>

@@ -22,6 +22,8 @@ import {
 } from '@patternfly/react-core';
 import { useCalendar } from '../context/CalendarContext';
 import { CopyableId } from './CopyableId';
+import { calendarAPI } from '../api/client';
+import { publicLinkUrl } from '../utils/publicLink';
 import ConfirmDialog from './ConfirmDialog';
 import InlineAlert from './InlineAlert';
 import './ShareDialog.css';
@@ -32,7 +34,7 @@ interface ShareDialogProps {
 
 const ShareDialog = ({ onClose }: ShareDialogProps) => {
   const { t } = useTranslation();
-  const { syncMode, calendarId, userId, grantAccess, revokeAccess, listPrivileges } = useCalendar();
+  const { syncMode, calendarId, userId, sessionToken, grantAccess, revokeAccess, listPrivileges } = useCalendar();
 
   // Legacy URL-based sharing
   const [url, setUrl] = useState('');
@@ -158,6 +160,34 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
     return `${currentOrigin}${basePath}/?calendar=${calendarId}`;
   };
 
+  const [publicToken, setPublicToken] = useState<string | null>(null);
+  const [publicId, setPublicId] = useState<string | null>(null);
+  const [publicBusy, setPublicBusy] = useState(false);
+  const isOwner = privileges.some((priv) => priv.userId === userId && priv.level === 'owner');
+  const publicUrl = publicToken && publicId ? publicLinkUrl(publicId, publicToken) : '';
+  const publicAction = async (action: 'status' | 'create' | 'revoke' | 'purge') => {
+    if (!calendarId || !userId || !sessionToken) return;
+    setPublicBusy(true);
+    try {
+      const result = await calendarAPI.managePublicLink(calendarId, userId, sessionToken, action);
+      setPublicToken(result.token);
+      setPublicId(result.publicId);
+      setFeedback({ title: t(`shareDialog.public.${action}Success`), variant: 'success' });
+    } catch {
+      setFeedback({ title: t('shareDialog.public.error'), variant: 'danger' });
+    } finally { setPublicBusy(false); }
+  };
+  useEffect(() => {
+    if (!isOwner || !calendarId || !userId || !sessionToken) return;
+    let active = true;
+    calendarAPI.managePublicLink(calendarId, userId, sessionToken, 'status')
+      .then((result) => {
+        if (active) { setPublicToken(result.token); setPublicId(result.publicId); }
+      })
+      .catch(() => { /* Status is best-effort; owner can create a fresh link. */ });
+    return () => { active = false; };
+  }, [calendarId, isOwner, sessionToken, userId]);
+
   return (
     <Modal
       variant={ModalVariant.large}
@@ -191,9 +221,22 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
             <div className="share-dialog-copy-row">
               <CopyableId id={calendarId} label={t('shareDialog.serverMode.calendarId')} displayLength={0} />
             </div>
+            {isOwner && <>
+               <Divider className="share-dialog-divider" />
+               <FormSection title={t('shareDialog.public.title')} className="share-dialog-subsection">
+                <p className="share-dialog-section__description">{t('shareDialog.public.description')}</p>
+                {publicUrl && <ClipboardCopy isReadOnly isCode variant="inline-compact" hoverTip={t('share.copy')} clickTip={t('share.copied')}>{publicUrl}</ClipboardCopy>}
+                <div className="share-dialog-public-actions">
+                  <Button variant={ButtonVariant.primary} onClick={() => publicAction(publicToken ? 'revoke' : 'create')} isDisabled={publicBusy} isLoading={publicBusy}>
+                    {publicToken ? t('shareDialog.public.revoke') : t('shareDialog.public.create')}
+                  </Button>
+                   {publicToken && <Button variant={ButtonVariant.secondary} onClick={() => publicAction('purge')} isDisabled={publicBusy}>{t('shareDialog.public.purge')}</Button>}
+                </div>
+              </FormSection>
+            </>}
           </FormSection>
 
-          <Divider className="pf-v6-u-my-md" />
+           <Divider className="share-dialog-divider" />
 
           <FormSection title={t('shareDialog.serverMode.grantAccess')} className="share-dialog-section">
             <p className="share-dialog-section__description">
@@ -231,7 +274,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
             </div>
           </FormSection>
 
-          <Divider className="pf-v6-u-my-md" />
+           <Divider className="share-dialog-divider" />
 
           <FormSection title={t('shareDialog.serverMode.currentAccess')} className="share-dialog-section">
             <p className="share-dialog-section__description">
@@ -279,7 +322,7 @@ const ShareDialog = ({ onClose }: ShareDialogProps) => {
             {t('share.description')}
           </p>
 
-          <Form noValidate onSubmit={(event) => { event.preventDefault(); handleGenerateLegacy(); }}>
+           <Form className="share-dialog-form share-dialog-legacy-form" noValidate onSubmit={(event) => { event.preventDefault(); handleGenerateLegacy(); }}>
             <FormGroup
               label={t('share.calendarUrl')}
               isRequired

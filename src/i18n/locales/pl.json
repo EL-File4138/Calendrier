@@ -236,6 +236,18 @@
     "tip": {
       "title": "Wskazówka:",
       "message": "Utwórz konto użytkownika i zapisz swój kalendarz na serwerze, aby łatwiej go udostępniać i współpracować w czasie rzeczywistym!"
+    },
+    "public": {
+      "title": "Publiczny link tylko do odczytu",
+      "description": "Każdy z tym linkiem może zobaczyć opóźniony migawkowy widok. Cofnij link, aby wyłączyć dostęp.",
+      "create": "Utwórz publiczny link",
+      "revoke": "Cofnij publiczny link",
+      "purge": "Odśwież publiczną migawkę",
+      "createSuccess": "Utworzono publiczny link.",
+      "revokeSuccess": "Cofnięto publiczny link.",
+      "purgeSuccess": "Usunięto publiczną migawkę.",
+      "statusSuccess": "Zaktualizowano stan publicznego linku.",
+      "error": "Nie udało się zmienić publicznego linku."
     }
   },
   "urlHandler": {
@@ -252,6 +264,20 @@
     "importSucceeded": "Kalendarz został pomyślnie zaimportowany!"
   },
   "userPanel": {
+    "accountActionCancelled": "Konto lub tryb połączenia zmienił się przed zakończeniem operacji.",
+    "workOffline": "Pracuj offline",
+    "offlineHelp": "Zachowaj lokalną kopię kalendarza i zatrzymaj synchronizację. Dostęp do serwera pozostaje. Otwórz link kalendarza, aby wczytać wersję z serwera; zmiany offline nie są automatycznie scalane.",
+    "logout": "Wyloguj się",
+    "logoutHelp": "Wylogowanie usuwa dane logowania tylko z tej przeglądarki. Inne przeglądarki i wyeksportowane dane logowania działają do wygaśnięcia tokenu. Bieżący kalendarz pozostaje jako lokalna kopia.",
+    "loggedOut": "Wylogowano. Kalendarz jest dostępny lokalnie.",
+    "logoutFailed": "Nie udało się usunąć danych logowania z tej przeglądarki. Spróbuj ponownie.",
+    "exportCredentials": "Eksportuj dane logowania",
+    "importCredentials": "Importuj dane logowania",
+    "exportCredentialsConfirm": "Pobrany plik umożliwia dostęp do konta. Zachowaj go w tajemnicy.",
+    "importCredentialsConfirm": "Import zastępuje dane logowania w tej przeglądarce. Kalendarz pozostaje bez zmian. Nie można przywrócić wygasłych ani unieważnionych sesji.",
+    "credentialsLocalOnly": "Import danych logowania jest dostępny tylko w trybie lokalnym.",
+    "credentialsImported": "Dane logowania zaimportowane. Ważność sesji zostanie sprawdzona przy dostępie do kalendarza na serwerze.",
+    "credentialsImportFailed": "Nie udało się zaimportować danych logowania. W trybie lokalnym wybierz prawidłowy plik danych logowania Calendrier dla tego serwera (do 4 KB).",
     "userStatus": "Status użytkownika",
     "close": "Zamknij",
     "createAccount": "Utwórz konto",
@@ -361,5 +387,12 @@
     "time": "Wprowadź prawidłową godzinę.",
     "interval": "Wprowadź całkowitą liczbę tygodni, co najmniej 1.",
     "dateList": "Wprowadź prawidłowe daty oddzielone przecinkami (RRRR-MM-DD)."
+  },
+  "publicShare": {
+    "viewTitle": "Kalendarz publiczny",
+    "viewHelp": "Udostępniony widok tylko do odczytu. Aktualizacje mogą być opóźnione.",
+    "readOnly": "Tylko do odczytu",
+    "return": "Wróć do zapisanego kalendarza",
+    "unavailable": "Ten publiczny link jest niedostępny lub został cofnięty."
   }
 }
