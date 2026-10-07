@@ -1,5 +1,6 @@
 {
   "toolbar": {
+    "actions": "Actions",
     "addCourse": "Add",
     "addCourseTitle": "Add Course",
     "export": "Export",
@@ -192,6 +193,14 @@
     "pm": "PM"
   },
   "calendar": {
+    "deleteOccurrence": "Delete this occurrence",
+    "moveOccurrence": "Move this occurrence",
+    "dragOccurrence": "Drag to move this occurrence only. Use the detail dialog to move with the keyboard.",
+    "moveDate": "New date",
+    "moveTime": "New start time",
+    "saveMove": "Save one-time change",
+    "invalidMove": "Choose a valid date and time. The session must end before midnight.",
+    "moveConflict": "This session already has an occurrence on that date. Choose another date.",
     "academicWeek": "week {{week}}",
     "academicSchedule": "Academic schedule",
     "allDay": "All day",
@@ -308,6 +317,20 @@
     "importSucceeded": "Calendar imported successfully!"
   },
   "userPanel": {
+    "credentialImportMethods": "Choose a credential JSON file or scan a credential QR code.",
+    "credentialExportMethods": "Choose a JSON file download or a QR code to transfer your credentials.",
+    "importCredentialFile": "Import from JSON file",
+    "exportCredentialFile": "Export as JSON file",
+    "stopScan": "Stop camera",
+    "exportQR": "Export credentials as QR code",
+    "exportQRConfirm": "Show a QR code containing your account credentials? Anyone who scans it can access your account.",
+    "scanQR": "Scan credential QR code",
+    "qrWarning": "This QR code contains account credentials. Keep it private; anyone with a copy can access the account.",
+    "scanHelp": "Allow camera access and point it at the credential QR code. Scanning stays on this device. You can also import a credential JSON file instead.",
+    "scanConfirm": "Import these credentials and replace the account saved on this device?",
+    "cameraUnavailable": "Camera scanning requires HTTPS and a browser with camera support. Import a JSON file instead.",
+    "cameraFailed": "Unable to open the camera. Check camera permissions or import a JSON file instead.",
+    "invalidQR": "This is not a valid credential QR code for this server. Scan another code.",
     "accountActionCancelled": "The account or connection mode changed before this operation completed.",
     "workOffline": "Work offline",
     "offlineHelp": "Keep this calendar as a local copy and stop syncing. Server access is retained. Reopen the calendar link to load the server version; offline edits are not merged automatically.",
@@ -316,7 +339,7 @@
     "loggedOut": "Logged out. Your calendar is available locally.",
     "logoutFailed": "Could not clear this browser’s account credentials. Try again.",
     "exportCredentials": "Export credentials",
-    "exportCredentialsConfirm": "The downloaded file grants access to your account. Keep it private.",
+    "exportCredentialsConfirm": "The QR code and downloaded file grant access to your account. Keep them private.",
     "importCredentialsConfirm": "Import replaces this browser’s account credentials. Your calendar stays unchanged. Expired or revoked sessions cannot be restored.",
     "importCredentials": "Import credentials",
     "credentialsLocalOnly": "Credential import is available in local mode only.",

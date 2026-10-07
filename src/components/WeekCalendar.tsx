@@ -3,11 +3,12 @@ import { isValidDate, focusFirstError } from '../utils/formValidation';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpenIcon, CoffeeIcon, CalendarAltIcon, ClipboardCheckIcon, RedoIcon, QuestionCircleIcon } from '@patternfly/react-icons';
-import { Modal, ModalVariant, ModalHeader, ModalBody, ModalFooter, Button, ButtonVariant, Form, FormGroup, FormSelect, FormSelectOption } from '@patternfly/react-core';
+import { Modal, ModalVariant, ModalHeader, ModalBody, ModalFooter, Button, ButtonVariant, Form, FormGroup, FormSelect, FormSelectOption, ToggleGroup, ToggleGroupItem } from '@patternfly/react-core';
 import { useCalendar } from '../context/CalendarContext';
 import { getOrderedWeekdays, timeToMinutes, minutesToTime, calculateTimeRange, formatTime } from '../utils/timeUtils';
 import type { Weekday, Course, Session, AcademicPeriod, AcademicPeriodKind } from '../types/Course';
-import { consolidateSession, dateKey, formatWeekRange, resolveSessionForDate, weekStartDate } from '../utils/sessionSchedule';
+import { consolidateSession, dateKey, formatWeekRange, resolveSessionForDate, weekStartDate, skipSessionOccurrence, moveSessionOccurrence, type ResolvedSession } from '../utils/sessionSchedule';
+import InlineAlert from './InlineAlert';
 import { academicPeriodsForDate, academicWeekNumber, academicSpecialDateLabel } from '../utils/academicCalendar';
 import CourseBlock from './CourseBlock';
 import SessionDetailDialog from './SessionDetailDialog';
@@ -27,6 +28,8 @@ interface WeekCalendarProps {
   onEditCourse: (courseId: string) => void;
   onDragCreate: (day: Weekday, startTime: string, endTime: string) => void;
   readOnly?: boolean;
+  displayMode?: 'week' | 'consolidated';
+  onDisplayModeChange?: (mode: 'week' | 'consolidated') => void;
 }
 
 interface ContextMenuState {
@@ -51,10 +54,14 @@ interface PositionedSession {
   columns: number;
 }
 
-const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCalendarProps) => {
-  const TIME_LABEL_WIDTH = 80;
+const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMode: controlledDisplayMode, onDisplayModeChange }: WeekCalendarProps) => {
   const { t, i18n } = useTranslation();
-  const { courses, settings, updateSettings, duplicateCourse, deleteCourse, title } = useCalendar();
+  const { courses, settings, updateSettings, updateCourse, duplicateCourse, deleteCourse, title, syncMode, hasWriteAccess } = useCalendar();
+  const canEditOccurrence = !readOnly && (syncMode !== 'server' || hasWriteAccess);
+  const [occurrenceError, setOccurrenceError] = useState<string | null>(null);
+  const occurrenceDrag = useRef<{ courseId: string; session: ResolvedSession; x: number; y: number; pointerId: number; active: boolean } | null>(null);
+  const suppressClickUntil = useRef(0);
+  const [movePreview, setMovePreview] = useState<{ day: Weekday; startTime: string; endTime: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
@@ -77,7 +84,9 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
   const [dragStart, setDragStart] = useState<{ day: Weekday; y: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ day: Weekday; y: number } | null>(null);
   const [displayedWeek, setDisplayedWeek] = useState(() => weekStartDate(new Date(), settings.weekStart));
-  const [displayMode, setDisplayMode] = useState<'week' | 'consolidated'>('week');
+  const [localDisplayMode, setLocalDisplayMode] = useState<'week' | 'consolidated'>('week');
+  const displayMode = controlledDisplayMode ?? localDisplayMode;
+  const setDisplayMode = onDisplayModeChange ?? setLocalDisplayMode;
   const consolidated = displayMode === 'consolidated';
   const displayedSessions = useMemo(() => courses.flatMap(course => course.sessions.flatMap(session =>
     (consolidated ? consolidateSession(session) : [session]).map(session => ({ course, session }))
@@ -85,15 +94,6 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
   const calendarRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  const allSessions = useMemo(
-    () => displayedSessions.map(({ session }) => session),
-    [displayedSessions]
-  );
-
-  const { start: startMinutes, end: endMinutes } = useMemo(
-    () => calculateTimeRange(allSessions),
-    [allSessions]
-  );
 
   const orderedWeekdays = useMemo(
     () => getOrderedWeekdays(settings.weekStart),
@@ -108,6 +108,18 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
     const date = new Date(displayedWeek.getFullYear(), displayedWeek.getMonth(), displayedWeek.getDate() + index);
     return [day, date] as const;
   })), [displayedWeek, orderedWeekdays]);
+
+  const { start: startMinutes, end: endMinutes } = useMemo(() => {
+    const sessions = consolidated
+      ? displayedSessions.map(({ session }) => session)
+      : courses.flatMap(course => course.sessions.flatMap(session =>
+        [...datesByDay.values()].flatMap(date => {
+          const resolved = resolveSessionForDate(session, date);
+          return resolved ? [resolved] : [];
+        })
+      ));
+    return calculateTimeRange(sessions);
+  }, [consolidated, displayedSessions, courses, datesByDay]);
 
   const visibleSemesters = (settings.academicCalendar?.periods ?? []).filter((period) =>
     period.kind === 'semester' && [...datesByDay.values()].some((date) =>
@@ -237,6 +249,65 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
     });
   };
 
+  const mutateOccurrence = async (courseId: string, session: ResolvedSession, target?: { date: string; startTime: string }) => {
+    if (!canEditOccurrence || consolidated) return;
+    const course = courses.find(item => item.id === courseId);
+    const original = course?.sessions.find(item => item.id === session.id);
+    if (!course || !original) return;
+    const changed = target ? moveSessionOccurrence(original, session, target.date, target.startTime) : skipSessionOccurrence(original, session.sourceDate);
+    await updateCourse(course.id, { ...course, sessions: course.sessions.map(item => item.id === original.id ? changed : item) });
+    setSessionDetail({ visible: false, course: null, session: null });
+    // The occurrence trigger may have disappeared; use a stable calendar control.
+    requestAnimationFrame(() => calendarRef.current?.querySelector<HTMLButtonElement>('.calendar-week-controls button')?.focus());
+  };
+
+  const startOccurrenceDrag = (event: React.PointerEvent, course: Course, session: Session) => {
+    if (!canEditOccurrence || consolidated || event.button !== 0 || !('sourceDate' in session)) return;
+    if (event.pointerType !== 'mouse' && !(event.target as HTMLElement).closest('.session-move-handle')) return;
+    event.stopPropagation();
+    (event.target as HTMLElement).closest('.course-block')?.setPointerCapture(event.pointerId);
+    occurrenceDrag.current = { courseId: course.id, session: session as ResolvedSession, x: event.clientX, y: event.clientY, pointerId: event.pointerId, active: false };
+    setOccurrenceError(null);
+  };
+
+  const occurrenceDragTarget = (event: React.PointerEvent) => {
+    const drag = occurrenceDrag.current;
+    if (!drag) return null;
+    const grid = calendarRef.current?.querySelector('.calendar-time-grid')?.getBoundingClientRect();
+    if (!grid || event.clientY < grid.top || event.clientY > grid.bottom) return null;
+    const column = [...(calendarRef.current?.querySelectorAll<HTMLElement>('.day-column') ?? [])].find(element => {
+      const rect = element.getBoundingClientRect();
+      return event.clientX >= rect.left && event.clientX < rect.right;
+    });
+    const day = column?.dataset.day as Weekday | undefined;
+    if (!day) return null;
+    const duration = timeToMinutes(drag.session.endTime) - timeToMinutes(drag.session.startTime);
+    const start = Math.max(startMinutes, Math.min(endMinutes - duration, timeToMinutes(drag.session.startTime) + getTimeFromY(event.clientY) - getTimeFromY(drag.y)));
+    return { day, startTime: minutesToTime(start), endTime: minutesToTime(start + duration) };
+  };
+
+  const moveOccurrenceDrag = (event: React.PointerEvent) => {
+    const drag = occurrenceDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag.active && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 6) return;
+    drag.active = true;
+    setMovePreview(occurrenceDragTarget(event));
+  };
+
+  const finishOccurrenceDrag = (event: React.PointerEvent) => {
+    const drag = occurrenceDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const target = occurrenceDragTarget(event);
+    occurrenceDrag.current = null;
+    setMovePreview(null);
+    if (!drag.active) return;
+    suppressClickUntil.current = Date.now() + 400;
+    const date = target && datesByDay.get(target.day);
+    if (target && date) void mutateOccurrence(drag.courseId, drag.session, { date: dateKey(date), startTime: target.startTime }).catch((error: unknown) => {
+      setOccurrenceError(t(`calendar.${error instanceof Error && error.message === 'moveConflict' ? 'moveConflict' : 'invalidMove'}`));
+    });
+  };
+
   const handleDuplicate = () => {
     if (contextMenu.courseId) {
       duplicateCourse(contextMenu.courseId);
@@ -327,17 +398,11 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
   };
 
   const getDayFromX = (x: number): Weekday | null => {
-    const rect = calendarRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-
-    const relativeX = x - rect.left - TIME_LABEL_WIDTH;
-    const dayWidth = (rect.width - TIME_LABEL_WIDTH) / visibleWeekdays.length;
-    const dayIndex = Math.floor(relativeX / dayWidth);
-
-    if (dayIndex >= 0 && dayIndex < visibleWeekdays.length) {
-      return visibleWeekdays[dayIndex];
-    }
-    return null;
+    const column = [...(calendarRef.current?.querySelectorAll<HTMLElement>('.day-column') ?? [])].find(element => {
+      const rect = element.getBoundingClientRect();
+      return x >= rect.left && x < rect.right;
+    });
+    return column?.dataset.day as Weekday | undefined ?? null;
   };
 
   const resetDragState = () => {
@@ -395,13 +460,18 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
   };
 
   return (
-    <div className="week-calendar" ref={calendarRef} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={resetDragState}>
+    <div className="week-calendar" ref={calendarRef} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={resetDragState}
+      onPointerMove={moveOccurrenceDrag} onPointerUp={finishOccurrenceDrag}
+      onPointerCancel={() => { occurrenceDrag.current = null; setMovePreview(null); }}
+      onKeyDown={(event) => { if (event.key === 'Escape') { occurrenceDrag.current = null; setMovePreview(null); } }}
+      onClickCapture={(event) => { if (Date.now() < suppressClickUntil.current) { event.stopPropagation(); event.preventDefault(); } }}>
+      {occurrenceError && <div role="alert"><InlineAlert variant="danger" title={occurrenceError} onClose={() => setOccurrenceError(null)} /></div>}
       <h2 className="calendar-title print-only">{title}</h2>
-      <div className="calendar-week-toolbar" aria-label={t('calendar.weekNavigation')}>
-        <FormSelect className="calendar-display-mode" aria-label={t('calendar.displayMode')} value={displayMode} onChange={(_event, value) => setDisplayMode(value as 'week' | 'consolidated')}>
-          <FormSelectOption value="week" label={t('calendar.weekView')} />
-          <FormSelectOption value="consolidated" label={t('calendar.consolidatedView')} />
-        </FormSelect>
+      <div className={`calendar-week-toolbar${onDisplayModeChange && consolidated ? ' calendar-week-toolbar--compact-empty' : ''}`} aria-label={t('calendar.weekNavigation')}>
+        <ToggleGroup className={`calendar-display-mode${onDisplayModeChange ? ' calendar-display-mode--desktop' : ''}`} aria-label={t('calendar.displayMode')}>
+          <ToggleGroupItem text={t('calendar.weekView')} isSelected={displayMode === 'week'} onChange={() => setDisplayMode('week')} />
+          <ToggleGroupItem text={t('calendar.consolidatedView')} isSelected={displayMode === 'consolidated'} onChange={() => setDisplayMode('consolidated')} />
+        </ToggleGroup>
         {!consolidated && <div className="calendar-week-navigation">
         <div className="calendar-week-controls" role="group" aria-label={t('calendar.weekNavigation')}>
         <Button variant="secondary" onClick={() => setDisplayedWeek((date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7))} aria-label={t('calendar.previousWeek')}>←</Button>
@@ -470,6 +540,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
                 <div
                   key={day}
                   className="day-column"
+                  data-day={day}
                    onMouseDown={handleMouseDown}
                  >
                  {!consolidated && academicPeriodsForDate(settings.academicCalendar, datesByDay.get(day)!).filter((period) => ['break', 'holiday', 'exams', 'retakeExams'].includes(period.kind)).map((period) => (
@@ -491,6 +562,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
                         <div
                           key={JSON.stringify([course.id, session.id, session.meetDay, session.startTime, session.endTime, session.location, session.instructor])}
                           className="course-block-wrapper"
+                          onPointerDown={(event) => startOccurrenceDrag(event, course, session)}
                           style={{
                             top: `${top}%`,
                             height: `${height}%`,
@@ -505,12 +577,14 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
                             onContextMenu={handleContextMenu}
                             onClick={() => handleSessionClick(course, session)}
                             timeFormat={settings.timeFormat}
+                            movable={canEditOccurrence && !consolidated}
                           />
                         </div>
                       );
                     })}
 
                 {isDragging && dragStart?.day === day && renderDragPreview()}
+                {movePreview?.day === day && <div className="drag-preview session-move-preview" aria-hidden="true" style={{ top: `${getPositionForSession(movePreview.startTime, movePreview.endTime).top}%`, height: `${getPositionForSession(movePreview.startTime, movePreview.endTime).height}%` }}>{formatTime(movePreview.startTime, settings.timeFormat)} – {formatTime(movePreview.endTime, settings.timeFormat)}</div>}
               </div>
             ))}
           </div>
@@ -541,6 +615,11 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false }: WeekCale
           course={sessionDetail.course}
           session={sessionDetail.session}
           timeFormat={settings.timeFormat}
+          occurrenceDate={'occurrenceDate' in sessionDetail.session ? String(sessionDetail.session.occurrenceDate) : undefined}
+          onDeleteOccurrence={canEditOccurrence && !consolidated ? () => {
+            void mutateOccurrence(sessionDetail.course!.id, sessionDetail.session as ResolvedSession).catch(() => setOccurrenceError(t('calendar.invalidMove')));
+          } : undefined}
+          onMoveOccurrence={canEditOccurrence && !consolidated ? (date, startTime) => mutateOccurrence(sessionDetail.course!.id, sessionDetail.session as ResolvedSession, { date, startTime }) : undefined}
           onClose={() => setSessionDetail({ visible: false, course: null, session: null })}
            onEdit={readOnly ? undefined : () => {
             if (sessionDetail.course) {

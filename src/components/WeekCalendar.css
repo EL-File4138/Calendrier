@@ -27,7 +27,7 @@ html.dark-mode .calendar-title {
 }
 
 .calendar-grid {
-  min-width: 900px;
+  min-width: 0;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -142,6 +142,7 @@ html.dark-mode .context-menu button:hover {
   }
 }
 .calendar-header {
+  min-width: 900px;
   display: flex;
   flex-shrink: 0;
   position: sticky;
@@ -172,6 +173,7 @@ html.dark-mode .context-menu button:hover {
 }
 
 .all-day-row {
+  min-width: 900px;
   display: flex;
   flex-shrink: 0;
   min-height: 30px;
@@ -241,6 +243,7 @@ html.dark-mode .academic-period-retakeExams { background: #5b2c31; color: #f8d7d
 html.dark-mode .academic-special-date { background: #3b3b3b; color: #eee; }
 
 .calendar-body {
+  min-width: 900px;
   flex: 1;
   position: relative;
   overflow: visible;
@@ -437,4 +440,40 @@ html.dark-mode .day-period-mask-exams, html.dark-mode .day-period-mask-retakeExa
 .day-header small { font-size: 0.72rem; opacity: 0.75; }
 .academic-period-delete-button {
   margin-inline-start: auto;
+}
+.session-move-handle {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.course-block:has(.session-move-handle) .course-title {
+  padding-inline-end: 24px;
+}
+
+.session-occurrence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-inline-start: auto;
+}
+
+@media (max-width: 960px) {
+  .calendar-display-mode--desktop { display: none; }
+  .calendar-week-toolbar--compact-empty { display: none; }
+}
+
+.session-move-preview {
+  pointer-events: none;
+  z-index: 5;
+  font-size: 0.8rem;
 }

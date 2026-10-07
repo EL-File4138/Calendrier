@@ -7,7 +7,7 @@ type Props = TextInputProps & { id: string; error?: string };
 export default function ValidatedTextInput({ error, id, ...props }: Props) {
   const { t } = useTranslation();
   return <>
-    <TextInput {...props} id={id} validated={error ? 'error' : 'default'} aria-invalid={!!error}
+    <TextInput {...props} id={id} validated={error ? 'error' : (props.validated ?? 'default')} aria-invalid={error ? true : (props['aria-invalid'] ?? false)}
       aria-describedby={[props['aria-describedby'], error ? `${id}-error` : undefined].filter(Boolean).join(' ') || undefined} />
     {error && <FormHelperText><HelperText><HelperTextItem id={`${id}-error`} variant="error" screenReaderText={t('notifications.danger')} role="alert">{error}</HelperTextItem></HelperText></FormHelperText>}
   </>;

@@ -4,6 +4,7 @@ import { EventTypeIcon } from '../utils/EventTypeIcon';
 import { DEFAULT_EVENT_TYPE_ICONS } from '../utils/eventIcons';
 import { formatTime } from '../utils/timeUtils';
 import './CourseBlock.css';
+import { useTranslation } from 'react-i18next';
 
 interface CourseBlockProps {
   course: Course;
@@ -11,9 +12,11 @@ interface CourseBlockProps {
   onContextMenu: (e: React.MouseEvent, courseId: string) => void;
   onClick: () => void;
   timeFormat: TimeFormat;
+  movable?: boolean;
 }
 
-const CourseBlock = ({ course, session, onContextMenu, onClick, timeFormat }: CourseBlockProps) => {
+const CourseBlock = ({ course, session, onContextMenu, onClick, timeFormat, movable }: CourseBlockProps) => {
+  const { t } = useTranslation();
   const { settings } = useCalendar();
   const typeKey = session.sessionType?.trim().toLocaleLowerCase();
   const icon = session.icon || course.icon || (typeKey ? settings.eventTypeIcons?.[typeKey] || DEFAULT_EVENT_TYPE_ICONS[typeKey] || 'question' : undefined);
@@ -29,7 +32,9 @@ const CourseBlock = ({ course, session, onContextMenu, onClick, timeFormat }: Co
       style={{ backgroundColor: course.color }}
       onContextMenu={handleContextMenu}
       onClick={onClick}
+      onMouseDown={(event) => event.stopPropagation()}
     >
+      {movable && <span className="session-move-handle" title={t('calendar.dragOccurrence')} aria-hidden="true">⠿</span>}
       <div className="course-title">{icon && <span className="course-type-icon" aria-hidden="true"><EventTypeIcon id={icon} /></span>}{course.title}</div>
       <div className="course-time">
         {formatTime(session.startTime, timeFormat)} - {formatTime(session.endTime, timeFormat)}

@@ -1,5 +1,6 @@
 {
   "toolbar": {
+    "actions": "操作",
     "addCourse": "添加",
     "addCourseTitle": "添加课程",
     "export": "导出",
@@ -264,6 +265,20 @@
     "importSucceeded": "日历导入成功！"
   },
   "userPanel": {
+    "credentialImportMethods": "选择凭据 JSON 文件，或扫描凭据二维码。",
+    "credentialExportMethods": "选择下载 JSON 文件或生成二维码，以传输凭据。",
+    "importCredentialFile": "从 JSON 文件导入",
+    "exportCredentialFile": "导出为 JSON 文件",
+    "stopScan": "停止相机",
+    "exportQR": "将凭据导出为二维码",
+    "exportQRConfirm": "显示包含账户凭据的二维码？任何扫描该二维码的人都可以访问您的账户。",
+    "scanQR": "扫描凭据二维码",
+    "qrWarning": "此二维码包含账户凭据。请妥善保密，任何持有副本的人都可以访问该账户。",
+    "scanHelp": "允许访问摄像头并对准凭据二维码。扫描仅在本设备进行，也可以导入凭据 JSON 文件。",
+    "scanConfirm": "导入这些凭据并替换本设备保存的账户？",
+    "cameraUnavailable": "摄像头扫描需要 HTTPS 和支持摄像头的浏览器。请改为导入 JSON 文件。",
+    "cameraFailed": "无法打开摄像头。请检查摄像头权限，或导入 JSON 文件。",
+    "invalidQR": "这不是适用于当前服务器的有效凭据二维码。请扫描其他二维码。",
     "accountActionCancelled": "操作完成前，账户或连接模式已更改。",
     "workOffline": "离线使用",
     "offlineHelp": "保留此日历的本地副本并停止同步，服务器访问权限不变。重新打开日历链接可加载服务器版本；离线修改不会自动合并。",
@@ -273,7 +288,7 @@
     "logoutFailed": "无法清除此浏览器的账户凭据，请重试。",
     "exportCredentials": "导出凭据",
     "importCredentials": "导入凭据",
-    "exportCredentialsConfirm": "下载的文件可用于访问您的账户，请妥善保密。",
+    "exportCredentialsConfirm": "二维码和下载的文件可用于访问您的账户，请妥善保密。",
     "importCredentialsConfirm": "导入将替换此浏览器的账户凭据，日历保持不变。已过期或已撤销的会话无法恢复。",
     "credentialsLocalOnly": "仅可在本地模式下导入凭据。",
     "credentialsImported": "凭据已导入。访问服务器日历时将验证会话是否有效。",
@@ -302,6 +317,14 @@
     "footerHasUser": "您现在可以创建和分享日历"
   },
   "calendar": {
+    "deleteOccurrence": "删除本次课程",
+    "moveOccurrence": "移动本次课程",
+    "dragOccurrence": "拖动以仅移动本次课程。使用键盘操作时，请打开详情对话框。",
+    "moveDate": "新日期",
+    "moveTime": "新开始时间",
+    "saveMove": "保存单次变更",
+    "invalidMove": "请选择有效的日期和时间。课程必须在午夜前结束。",
+    "moveConflict": "该课程在所选日期已有安排，请选择其他日期。",
     "academicWeek": "第 {{week}} 周",
     "academicSchedule": "校历",
     "allDay": "全天",

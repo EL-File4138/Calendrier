@@ -1,8 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toPng } from 'html-to-image';
 import {
   Button,
+  ExpandableSection,
+  ToggleGroup,
+  ToggleGroupItem,
   TextInput
 } from '@patternfly/react-core';
 import {
@@ -33,11 +36,13 @@ import './Toolbar.css';
 interface ToolbarProps {
   onAddCourse: () => void;
   onOpenSettings: () => void;
+  displayMode: 'week' | 'consolidated';
+  onDisplayModeChange: (mode: 'week' | 'consolidated') => void;
 }
 
 type DialogType = 'new-calendar' | 'import-warning' | 'share' | 'delete-calendar' | null;
 
-const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
+const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplayModeChange }: ToolbarProps) => {
   const { t } = useTranslation();
   const {
     title,
@@ -58,6 +63,14 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const [dialog, setDialog] = useState<DialogType>(null);
+  const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 960px)').matches);
+  const [actionsExpanded, setActionsExpanded] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 960px)');
+    const change = () => { setCompact(media.matches); setActionsExpanded(false); };
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
   const [alertMessage, setAlertMessage] = useState<{ message: string; variant: 'danger' | 'success' } | null>(null);
 
   const showAlert = (message: string, variant: 'danger' | 'success' = 'danger') => {
@@ -180,7 +193,24 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
         titleElement.style.display = 'block';
       }
 
-      const dataUrl = await runInLightMode(() => toPng(calendarElement, {
+      const grid = calendarElement.querySelector<HTMLElement>('.calendar-grid');
+      const calendarStyle = calendarElement.style.cssText;
+      const gridStyle = grid?.style.cssText;
+      const scrollLeft = grid?.scrollLeft ?? 0;
+      const scrollTop = grid?.scrollTop ?? 0;
+      let dataUrl: string;
+      try {
+        const fullWidth = Math.max(calendarElement.scrollWidth, grid?.scrollWidth ?? 0);
+        calendarElement.style.width = `${fullWidth}px`;
+        calendarElement.style.maxWidth = 'none';
+        calendarElement.style.flexShrink = '0';
+        if (grid) {
+          grid.style.width = `${fullWidth}px`;
+          grid.style.overflow = 'visible';
+          grid.scrollLeft = 0;
+          grid.scrollTop = 0;
+        }
+        dataUrl = await runInLightMode(() => toPng(calendarElement, {
           quality: 1,
           pixelRatio: 2,
           backgroundColor: '#ffffff',
@@ -188,6 +218,14 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
           width: calendarElement.scrollWidth,
           height: calendarElement.scrollHeight,
         }));
+      } finally {
+        calendarElement.style.cssText = calendarStyle;
+        if (grid) {
+          grid.style.cssText = gridStyle ?? '';
+          grid.scrollLeft = scrollLeft;
+          grid.scrollTop = scrollTop;
+        }
+      }
 
       if (toolbarElement) {
         toolbarElement.style.display = '';
@@ -295,6 +333,8 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
               </button></h1>
             )}
         </div>
+        <ExpandableSection className="calendrier-toolbar__disclosure" isExpanded={!compact || actionsExpanded}
+          onToggle={(_event, expanded) => setActionsExpanded(expanded)} toggleText={t('toolbar.actions')}>
         <div className="calendrier-toolbar__actions">
           <div className="calendrier-toolbar__primary-actions">
                   <Button
@@ -358,7 +398,12 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
                     ]}
                   />
           </div>
+                  {compact && <ToggleGroup className="toolbar-display-mode" aria-label={t('calendar.displayMode')}>
+                    <ToggleGroupItem text={t('calendar.weekView')} isSelected={displayMode === 'week'} onChange={() => onDisplayModeChange('week')} />
+                    <ToggleGroupItem text={t('calendar.consolidatedView')} isSelected={displayMode === 'consolidated'} onChange={() => onDisplayModeChange('consolidated')} />
+                  </ToggleGroup>}
           <div className="calendrier-toolbar__utility-actions">
+                  <div className="calendrier-toolbar__settings-actions">
                   <Button
                     variant="plain"
                     icon={<CogIcon />}
@@ -371,9 +416,11 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings }: ToolbarProps) => {
                     onClick={toggleDarkMode}
                     aria-label={t('toolbar.darkModeTitle')}
                   />
+                  </div>
                   <UserPanel />
           </div>
         </div>
+        </ExpandableSection>
       </header>
 
       {alertMessage && <InlineAlert title={alertMessage.message} variant={alertMessage.variant} onClose={() => setAlertMessage(null)} />}

@@ -1,5 +1,6 @@
 {
   "toolbar": {
+    "actions": "Działania",
     "addCourse": "Dodaj",
     "addCourseTitle": "Dodaj kurs",
     "export": "Eksportuj",
@@ -264,6 +265,20 @@
     "importSucceeded": "Kalendarz został pomyślnie zaimportowany!"
   },
   "userPanel": {
+    "credentialImportMethods": "Wybierz plik JSON z danymi logowania lub zeskanuj kod QR.",
+    "credentialExportMethods": "Wybierz pobranie pliku JSON lub kod QR, aby przenieść dane logowania.",
+    "importCredentialFile": "Importuj z pliku JSON",
+    "exportCredentialFile": "Eksportuj jako plik JSON",
+    "stopScan": "Zatrzymaj kamerę",
+    "exportQR": "Eksportuj dane logowania jako kod QR",
+    "exportQRConfirm": "Wyświetlić kod QR z danymi logowania? Każdy, kto go zeskanuje, może uzyskać dostęp do konta.",
+    "scanQR": "Skanuj kod QR z danymi logowania",
+    "qrWarning": "Ten kod QR zawiera dane logowania. Zachowaj go w tajemnicy; każdy, kto ma jego kopię, może uzyskać dostęp do konta.",
+    "scanHelp": "Zezwól na dostęp do kamery i skieruj ją na kod QR. Skanowanie odbywa się na tym urządzeniu. Możesz też zaimportować plik JSON z danymi logowania.",
+    "scanConfirm": "Zaimportować te dane i zastąpić konto zapisane na tym urządzeniu?",
+    "cameraUnavailable": "Skanowanie wymaga HTTPS i przeglądarki obsługującej kamerę. Zaimportuj plik JSON.",
+    "cameraFailed": "Nie można uruchomić kamery. Sprawdź uprawnienia lub zaimportuj plik JSON.",
+    "invalidQR": "To nie jest poprawny kod QR z danymi logowania dla tego serwera. Zeskanuj inny kod.",
     "accountActionCancelled": "Konto lub tryb połączenia zmienił się przed zakończeniem operacji.",
     "workOffline": "Pracuj offline",
     "offlineHelp": "Zachowaj lokalną kopię kalendarza i zatrzymaj synchronizację. Dostęp do serwera pozostaje. Otwórz link kalendarza, aby wczytać wersję z serwera; zmiany offline nie są automatycznie scalane.",
@@ -273,7 +288,7 @@
     "logoutFailed": "Nie udało się usunąć danych logowania z tej przeglądarki. Spróbuj ponownie.",
     "exportCredentials": "Eksportuj dane logowania",
     "importCredentials": "Importuj dane logowania",
-    "exportCredentialsConfirm": "Pobrany plik umożliwia dostęp do konta. Zachowaj go w tajemnicy.",
+    "exportCredentialsConfirm": "Kod QR i pobrany plik umożliwiają dostęp do konta. Zachowaj je w tajemnicy.",
     "importCredentialsConfirm": "Import zastępuje dane logowania w tej przeglądarce. Kalendarz pozostaje bez zmian. Nie można przywrócić wygasłych ani unieważnionych sesji.",
     "credentialsLocalOnly": "Import danych logowania jest dostępny tylko w trybie lokalnym.",
     "credentialsImported": "Dane logowania zaimportowane. Ważność sesji zostanie sprawdzona przy dostępie do kalendarza na serwerze.",
@@ -302,6 +317,14 @@
     "footerHasUser": "Możesz teraz tworzyć i udostępniać kalendarze"
   },
   "calendar": {
+    "deleteOccurrence": "Usuń to wystąpienie",
+    "moveOccurrence": "Przenieś to wystąpienie",
+    "dragOccurrence": "Przeciągnij, aby przenieść tylko to wystąpienie. Aby użyć klawiatury, otwórz okno szczegółów.",
+    "moveDate": "Nowa data",
+    "moveTime": "Nowa godzina rozpoczęcia",
+    "saveMove": "Zapisz jednorazową zmianę",
+    "invalidMove": "Wybierz poprawną datę i godzinę. Zajęcia muszą kończyć się przed północą.",
+    "moveConflict": "Te zajęcia mają już wystąpienie w tym dniu. Wybierz inną datę.",
     "academicWeek": "tydzień {{week}}",
     "academicSchedule": "Kalendarz akademicki",
     "allDay": "Cały dzień",

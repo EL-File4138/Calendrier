@@ -1,7 +1,7 @@
 {
   "name": "calendrier",
   "private": true,
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -17,9 +17,12 @@
     "@patternfly/react-core": "^6.4.0",
     "@patternfly/react-icons": "^6.4.0",
     "@patternfly/react-styles": "^6.4.0",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "html-to-image": "^1.11.13",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^17.0.15"

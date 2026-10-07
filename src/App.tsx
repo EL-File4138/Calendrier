@@ -18,6 +18,7 @@ function AppContent() {
   const { isLoaded, localError, dismissLocalError } = useCalendar();
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'week' | 'consolidated'>('week');
   const [editingCourseId, setEditingCourseId] = useState<string | undefined>();
   const [formInitialData, setFormInitialData] = useState<{
     day?: Weekday;
@@ -60,11 +61,13 @@ function AppContent() {
 
   return (
     <div className="calendrier-app">
-      <Toolbar onAddCourse={handleAddCourse} onOpenSettings={() => setShowSettings(true)} />
+      <Toolbar onAddCourse={handleAddCourse} onOpenSettings={() => setShowSettings(true)} displayMode={displayMode} onDisplayModeChange={setDisplayMode} />
       <main className="calendrier-main">
         {localError && <InlineAlert onClose={dismissLocalError} title={t(localError)} variant="danger" />}
         <URLHandler />
         <WeekCalendar
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
           onEditCourse={handleEditCourse}
           onDragCreate={handleDragCreate}
         />

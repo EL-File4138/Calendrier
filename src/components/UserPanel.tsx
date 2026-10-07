@@ -18,6 +18,7 @@ import { MAX_CREDENTIAL_FILE_BYTES, parseCredentials, type CredentialBackup } fr
 import { CopyableId } from './CopyableId';
 import InlineAlert from './InlineAlert';
 import ConfirmDialog from './ConfirmDialog';
+import CredentialQRDialog from './CredentialQRDialog';
 import './UserPanel.css';
 
 export const UserPanel = () => {
@@ -43,7 +44,8 @@ export const UserPanel = () => {
   const credentialInput = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [confirmation, setConfirmation] = useState<'exportCredentials' | 'importCredentials' | 'workOffline' | 'logout' | null>(null);
+  const [qrMode, setQRMode] = useState<'export' | 'import' | null>(null);
+  const [confirmation, setConfirmation] = useState<'workOffline' | 'logout' | null>(null);
   const confirmAction = (action: NonNullable<typeof confirmation>) => {
     setShowPanel(false);
     setConfirmation(action);
@@ -201,8 +203,8 @@ export const UserPanel = () => {
           )}
           <div className="user-panel-form">
             <div className="user-panel-credential-actions">
-              {userId && sessionToken && <Button variant="secondary" onClick={() => confirmAction('exportCredentials')}>{t('userPanel.exportCredentials')}</Button>}
-              <Button variant="secondary" isDisabled={syncMode === 'server' || isImporting || isCreatingUser || isLoggingOut} isLoading={isImporting} onClick={() => confirmAction('importCredentials')}>{t('userPanel.importCredentials')}</Button>
+              {userId && sessionToken && <Button variant="secondary" onClick={() => { setShowPanel(false); setQRMode('export'); }}>{t('userPanel.exportCredentials')}</Button>}
+              <Button variant="secondary" isDisabled={syncMode === 'server' || isImporting || isCreatingUser || isLoggingOut} isLoading={isImporting} onClick={() => { setShowPanel(false); setQRMode('import'); }}>{t('userPanel.importCredentials')}</Button>
             </div>
             {syncMode === 'server' && <p>{t('userPanel.credentialsLocalOnly')}</p>}
             {syncMode === 'server' && <>
@@ -237,6 +239,17 @@ export const UserPanel = () => {
       event.currentTarget.value = '';
       if (file) { setShowPanel(true); void importCredentials(file); }
     }} />
+    {qrMode && <CredentialQRDialog
+      serverUrl={WORKER_URL}
+      credentials={qrMode === 'export' && userId && sessionToken ? { format: 'calendrier-credentials', version: 1, serverUrl: WORKER_URL, userId, sessionToken } : undefined}
+      onClose={() => { setQRMode(null); setShowPanel(true); }}
+      onExportFile={exportCredentials}
+      onImportFile={() => { setQRMode(null); setShowPanel(true); credentialInput.current?.click(); }}
+      onImport={async (backup) => {
+        await registerUserSession(backup.userId, backup.sessionToken);
+        setFeedback({ title: t('userPanel.credentialsImported'), variant: 'success' });
+      }}
+    />}
     {confirmation && <ConfirmDialog
       title={t(`userPanel.${confirmation}`)}
       message={t(`userPanel.${confirmation === 'workOffline' ? 'offlineHelp' : confirmation === 'logout' ? 'logoutHelp' : `${confirmation}Confirm`}`)}
@@ -248,9 +261,7 @@ export const UserPanel = () => {
         const action = confirmation;
         setConfirmation(null);
         setShowPanel(true);
-        if (action === 'exportCredentials') exportCredentials();
-        else if (action === 'importCredentials') credentialInput.current?.click();
-        else if (action === 'workOffline') workOffline();
+        if (action === 'workOffline') workOffline();
         else void handleLogout();
       }}
     />}

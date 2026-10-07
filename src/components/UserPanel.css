@@ -96,13 +96,13 @@
   gap: var(--pf-t--global--spacer--sm);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .user-panel-toggle__text {
     display: none;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .user-panel-toggle {
     margin-inline-start: auto;
   }

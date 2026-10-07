@@ -28,12 +28,12 @@ export function resolveSessionForDate(session: Session, date: Date): ResolvedSes
   }
 
   const startKey = schedule.startDate;
-  if (!startKey) return null;
-  const start = parseDateKey(startKey);
+  if (!startKey && (schedule.mode !== 'weekly' || (schedule.intervalWeeks ?? 1) !== 1)) return null;
   const overrideEntries = Object.entries(schedule.overrides ?? {});
-  const movedSource = overrideEntries.find(([, value]) => value.moveToDate === targetKey)?.[0];
+  const movedSource = overrideEntries.find(([source, value]) => value.moveToDate === targetKey && !value.cancelled && !schedule.excludedDates?.includes(source))?.[0];
   const sourceKey = movedSource ?? targetKey;
   const sourceDate = parseDateKey(sourceKey);
+  const start = startKey ? parseDateKey(startKey) : sourceDate;
   const weeks = Math.round((sourceDate.getTime() - start.getTime()) / (7 * 86400000));
   const interval = Math.max(1, schedule.intervalWeeks ?? 1);
   const recurring = schedule.mode === 'once'
@@ -72,14 +72,25 @@ export const weekStartDate = (date: Date, weekStart: Weekday = 'Monday'): Date =
 export function consolidateSession(session: Session): Session[] {
   const schedule = session.schedule;
   if (!schedule) return [session];
-  if (!schedule.startDate) return [];
   const variants = new Map<string, Session>();
-  const add = (date: Date) => {
-    const resolved = resolveSessionForDate(session, date);
-    if (!resolved) return;
+  const addVariant = (resolved: Session) => {
     const key = JSON.stringify([resolved.meetDay, resolved.startTime, resolved.endTime, resolved.location, resolved.instructor]);
     variants.set(key, { ...session, meetDay: resolved.meetDay, startTime: resolved.startTime, endTime: resolved.endTime, location: resolved.location, instructor: resolved.instructor });
   };
+  const add = (date: Date) => {
+    const resolved = resolveSessionForDate(session, date);
+    if (!resolved) return;
+    addVariant(resolved);
+  };
+  if (!schedule.startDate) {
+    if (schedule.mode !== 'weekly' || (schedule.intervalWeeks ?? 1) !== 1) return [];
+    // Finite exceptions cannot remove every unbounded weekly occurrence.
+    addVariant(session);
+    for (const [source, override] of Object.entries(schedule.overrides ?? {})) {
+      add(parseDateKey(override.moveToDate ?? source));
+    }
+    return [...variants.values()];
+  }
   const start = parseDateKey(schedule.startDate);
   if (schedule.mode === 'once') {
     add(start);
@@ -103,6 +114,46 @@ export function consolidateSession(session: Session): Session[] {
   }
   return [...variants.values()];
 }
+
+export function skipSessionOccurrence(session: Session, sourceDate: string): Session {
+  const schedule = session.schedule ?? { mode: 'weekly' as const };
+  return {
+    ...session,
+    schedule: { ...schedule, excludedDates: [...new Set([...(schedule.excludedDates ?? []), sourceDate])] },
+  };
+}
+
+export function moveSessionOccurrence(session: Session, occurrence: ResolvedSession, targetDate: string, startTime: string): Session {
+  const start = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(startTime);
+  const target = parseDateKey(targetDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || dateKey(target) !== targetDate || !start) throw new Error('invalidMove');
+  const minutes = Number(start[1]) * 60 + Number(start[2]);
+  const duration = timeMinutes(occurrence.endTime) - timeMinutes(occurrence.startTime);
+  if (duration <= 0 || minutes + duration >= 1440) throw new Error('invalidMove');
+  const existing = resolveSessionForDate(session, target);
+  if (existing && existing.sourceDate !== occurrence.sourceDate) throw new Error('moveConflict');
+  const schedule = session.schedule ?? { mode: 'weekly' as const };
+  return {
+    ...session,
+    schedule: {
+      ...schedule,
+      overrides: {
+        ...schedule.overrides,
+        [occurrence.sourceDate]: {
+          ...schedule.overrides?.[occurrence.sourceDate],
+          moveToDate: targetDate,
+          startTime,
+          endTime: `${String(Math.floor((minutes + duration) / 60)).padStart(2, '0')}:${String((minutes + duration) % 60).padStart(2, '0')}`,
+        },
+      },
+    },
+  };
+}
+
+const timeMinutes = (value: string): number => {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+};
 
 export const formatWeekRange = (start: Date, locale?: string): string => {
   const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);

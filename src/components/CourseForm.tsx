@@ -81,7 +81,7 @@ const CourseForm = ({ courseId, initialData, onClose }: CourseFormProps) => {
     else if (isValidTime(session.startTime) && session.endTime <= session.startTime) errors[`${prefix}-end`] = t('courseForm.invalidTimeRange');
     const schedule = session.schedule;
     if (!schedule) return;
-    if (!isValidDate(schedule.startDate ?? '')) errors[`${prefix}-start-date`] = t('validation.date');
+    if ((schedule.startDate || schedule.mode !== 'weekly' || (schedule.intervalWeeks ?? 1) !== 1) && !isValidDate(schedule.startDate ?? '')) errors[`${prefix}-start-date`] = t('validation.date');
     if (schedule.endDate && !isValidDate(schedule.endDate)) errors[`${prefix}-end-date`] = t('validation.date');
     else if (schedule.endDate && schedule.startDate && schedule.endDate < schedule.startDate) errors[`${prefix}-end-date`] = t('validation.dateOrder');
     const interval = Number(intervalDrafts[session.localId] ?? schedule.intervalWeeks ?? 1);
