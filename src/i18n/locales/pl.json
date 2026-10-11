@@ -338,6 +338,7 @@
     "previousWeek": "Poprzedni tydzień",
     "nextWeek": "Następny tydzień",
     "today": "Dzisiaj",
+    "currentTime": "Aktualny czas: {{time}}",
     "savePeriod": "Zapisz okres",
     "defaultTitle": "Kalendarz akademicki",
     "importedTitle": "Zaimportowany kalendarz",

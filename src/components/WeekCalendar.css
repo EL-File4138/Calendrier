@@ -1,3 +1,63 @@
+.current-time-indicator {
+  position: absolute;
+  inset-inline: 0;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--pf-t--global--color--status--danger--default, #c9190b);
+  z-index: 7;
+  pointer-events: none;
+}
+
+.current-time-dot {
+  position: absolute;
+  inset-inline-start: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.current-time-guide {
+  position: absolute;
+  inset-inline-start: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--pf-t--global--color--status--danger--default, #c9190b) 45%, transparent);
+  transform: translateY(-50%);
+  z-index: 7;
+  pointer-events: none;
+}
+
+.current-time-guide::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: -1.5px;
+  width: 80px;
+  border-top: 2px solid var(--pf-t--global--color--status--danger--default, #c9190b);
+}
+
+.current-time-guide::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 76px;
+  top: -4.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pf-t--global--color--status--danger--default, #c9190b);
+}
+
+.day-header.day-header--today,
+html.dark-mode .day-header.day-header--today {
+  background: var(--pf-t--global--background--color--primary--default, #f0f0f0);
+  box-shadow: inset 0 -3px var(--pf-t--global--color--brand--default, #0066cc);
+  font-weight: 700;
+}
+
+@media print {
+  .current-time-indicator, .current-time-guide { display: none; }
+}
+
 .week-calendar {
   display: flex;
   flex-direction: column;
@@ -251,6 +311,7 @@ html.dark-mode .academic-special-date { background: #3b3b3b; color: #eee; }
 }
 
 .calendar-time-grid {
+  position: relative;
   display: flex;
   height: 100%;
 }
