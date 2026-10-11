@@ -88,6 +88,18 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
   const displayMode = controlledDisplayMode ?? localDisplayMode;
   const setDisplayMode = onDisplayModeChange ?? setLocalDisplayMode;
   const consolidated = displayMode === 'consolidated';
+  const [now, setNow] = useState(() => new Date());
+  const [todayRequest, setTodayRequest] = useState(0);
+  const centeredRequest = useRef(-1);
+  useEffect(() => {
+    const refresh = () => setNow(new Date());
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
   const displayedSessions = useMemo(() => courses.flatMap(course => course.sessions.flatMap(session =>
     (consolidated ? consolidateSession(session) : [session]).map(session => ({ course, session }))
   )), [courses, consolidated]);
@@ -118,8 +130,13 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
           return resolved ? [resolved] : [];
         })
       ));
-    return calculateTimeRange(sessions);
-  }, [consolidated, displayedSessions, courses, datesByDay]);
+    const range = calculateTimeRange(sessions);
+    if (!consolidated && [...datesByDay.values()].some(date => dateKey(date) === dateKey(now))) {
+      const hour = now.getHours() * 60;
+      return { start: Math.min(range.start, hour), end: Math.max(range.end, hour + 60) };
+    }
+    return range;
+  }, [consolidated, displayedSessions, courses, datesByDay, now]);
 
   const visibleSemesters = (settings.academicCalendar?.periods ?? []).filter((period) =>
     period.kind === 'semester' && [...datesByDay.values()].some((date) =>
@@ -152,6 +169,31 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
     }
     return slots;
   }, [startMinutes, endMinutes]);
+
+  const currentDay = !consolidated
+    ? visibleWeekdays.find(day => dateKey(datesByDay.get(day)!) === dateKey(now))
+    : undefined;
+  const isCurrentWeek = !consolidated && [...datesByDay.values()].some(date => dateKey(date) === dateKey(now));
+  const currentTimePosition = ((now.getHours() * 60 + now.getMinutes() - startMinutes) / (endMinutes - startMinutes)) * 100;
+
+  useEffect(() => {
+    if (!currentDay) {
+      centeredRequest.current = -1;
+      return;
+    }
+    if (!window.matchMedia('(max-width: 960px)').matches || centeredRequest.current === todayRequest) return;
+    const frame = requestAnimationFrame(() => {
+      const grid = calendarRef.current?.querySelector<HTMLElement>('.calendar-grid');
+      const column = grid?.querySelector<HTMLElement>(`.day-column[data-day="${currentDay}"]`);
+      if (!grid || !column) return;
+      const viewport = grid.getBoundingClientRect();
+      const bounds = column.getBoundingClientRect();
+      grid.scrollLeft += bounds.left + bounds.width / 2 - viewport.left - grid.clientWidth / 2;
+      grid.scrollTop += bounds.top + bounds.height * currentTimePosition / 100 - viewport.top - grid.clientHeight / 2;
+      centeredRequest.current = todayRequest;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentDay, currentTimePosition, todayRequest]);
 
   const sessionsByDay = useMemo(() => {
     const layouts = new Map<Weekday, PositionedSession[]>();
@@ -475,7 +517,12 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
         {!consolidated && <div className="calendar-week-navigation">
         <div className="calendar-week-controls" role="group" aria-label={t('calendar.weekNavigation')}>
         <Button variant="secondary" onClick={() => setDisplayedWeek((date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7))} aria-label={t('calendar.previousWeek')}>←</Button>
-        <Button variant="secondary" onClick={() => setDisplayedWeek(weekStartDate(new Date(), settings.weekStart))}>{t('calendar.today')}</Button>
+        <Button variant="secondary" onClick={() => {
+          const today = new Date();
+          setNow(today);
+          setDisplayedWeek(weekStartDate(today, settings.weekStart));
+          setTodayRequest(request => request + 1);
+        }}>{t('calendar.today')}</Button>
         <Button variant="secondary" onClick={() => setDisplayedWeek((date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7))} aria-label={t('calendar.nextWeek')}>→</Button>
         </div>
         <div className="calendar-week-heading">
@@ -492,7 +539,7 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
         <div className="calendar-header">
           <div className="time-label-header"></div>
           {visibleWeekdays.map(day => (
-            <div key={day} className="day-header">
+            <div key={day} className={`day-header${day === currentDay ? ' day-header--today' : ''}`} aria-current={day === currentDay ? 'date' : undefined}>
               <span>{t(`weekdays.${day.toLowerCase()}`)}</span>
               {!consolidated && <small>{datesByDay.get(day) ? new Intl.DateTimeFormat(i18n.resolvedLanguage, { month: 'short', day: 'numeric' }).format(datesByDay.get(day)!) : ''}</small>}
             </div>
@@ -527,6 +574,14 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
 
          <div className="calendar-body">
           <div className="calendar-time-grid" style={{ minHeight: `${timeSlots.length * 60}px` }}>
+          {isCurrentWeek && (
+            <div className="current-time-guide" aria-hidden="true" style={{
+              top: `${currentTimePosition}%`,
+              width: currentDay
+                ? `calc(${visibleWeekdays.indexOf(currentDay) / visibleWeekdays.length * 100}% + ${80 * (1 - visibleWeekdays.indexOf(currentDay) / visibleWeekdays.length)}px)`
+                : '100%',
+            }} />
+          )}
           <div className="time-labels">
             {timeSlots.map(minutes => (
               <div key={minutes} className="time-label">
@@ -546,9 +601,14 @@ const WeekCalendar = ({ onEditCourse, onDragCreate, readOnly = false, displayMod
                  {!consolidated && academicPeriodsForDate(settings.academicCalendar, datesByDay.get(day)!).filter((period) => ['break', 'holiday', 'exams', 'retakeExams'].includes(period.kind)).map((period) => (
                    <span key={period.id} aria-hidden="true" className={`day-period-mask day-period-mask-${period.kind}`} />
                  ))}
-                 {timeSlots.map(minutes => (
-                  <div key={minutes} className="time-slot" />
-                ))}
+                  {timeSlots.map(minutes => (
+                   <div key={minutes} className="time-slot" />
+                 ))}
+                 {day === currentDay && (
+                   <div className="current-time-indicator" style={{ top: `${currentTimePosition}%` }} aria-label={t('calendar.currentTime', { time: formatTime(minutesToTime(now.getHours() * 60 + now.getMinutes()), settings.timeFormat) })} role="img">
+                     <span className="current-time-dot" />
+                   </div>
+                 )}
 
                 {(sessionsByDay.get(day) || []).map(({ course, session, column, columns }) => {
                       const { top, height } = getPositionForSession(

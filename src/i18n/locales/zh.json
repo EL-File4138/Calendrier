@@ -338,6 +338,7 @@
     "previousWeek": "上一周",
     "nextWeek": "下一周",
     "today": "今天",
+    "currentTime": "当前时间：{{time}}",
     "savePeriod": "保存安排",
     "defaultTitle": "学术日历",
     "importedTitle": "导入的日历",

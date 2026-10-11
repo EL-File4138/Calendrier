@@ -218,6 +218,7 @@
     "previousWeek": "Previous week",
     "nextWeek": "Next week",
     "today": "Today",
+    "currentTime": "Current time: {{time}}",
     "savePeriod": "Save period",
     "defaultTitle": "Academic Calendar",
     "importedTitle": "Imported Calendar",
