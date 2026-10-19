@@ -1,4 +1,22 @@
 {
+  "remoteCalendar": {
+    "history": "Recently opened calendars",
+    "historyPrivacy": "The last 10 calendars are saved on this device. Saved public links contain access tokens. Clear history on shared devices. Account calendars still require permission. History does not save extra offline copies.",
+    "historyEmpty": "No recently opened calendars.",
+    "publicCalendar": "Public calendar",
+    "privateCalendar": "Account calendar",
+    "remove": "Remove",
+    "removeHistory": "Remove {{title}} from history",
+    "clearHistory": "Clear history",
+    "open": "Open calendar URL",
+    "url": "Calendar URL",
+    "urlHelp": "Paste a public or account calendar link from this Calendrier deployment. Account calendars require your saved credentials.",
+    "invalidUrl": "Enter a valid calendar link from this Calendrier deployment.",
+    "offline": "Offline mode — saved calendar",
+    "cached": "Showing a saved calendar. It may be out of date. Editing is disabled. Export any unsynced changes before reconnecting: reconnecting reloads the server version.",
+    "retry": "Reconnect",
+    "noCache": "The remote calendar could not be opened. Your local calendar has been restored. Connect once to save a remote copy for offline viewing."
+  },
   "toolbar": {
     "actions": "Actions",
     "addCourse": "Add",

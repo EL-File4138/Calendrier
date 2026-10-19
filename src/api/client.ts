@@ -7,6 +7,7 @@ import type {
   Privilege,
   CreateUserResponse,
 } from './types';
+import { RemoteCalendarError } from '../utils/remoteCalendar';
 
 // Configure your Worker URL here
 export const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787';
@@ -85,7 +86,7 @@ export class CalendarAPI {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ publicId, token }),
     });
-    if (!response.ok) throw new Error('Public link unavailable');
+    if (!response.ok) throw new RemoteCalendarError(response.status, 'Public link unavailable');
     const result = await response.json() as ReadCalendarResponse;
     if (!result || !result.data || !Array.isArray(result.data.courses) || typeof result.version !== 'number' || typeof result.updatedAt !== 'number') {
       throw new Error('Invalid public calendar response');
@@ -127,7 +128,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(await responseErrorMessage(response, 'Failed to read calendar'));
+      throw new RemoteCalendarError(response.status, await responseErrorMessage(response, 'Failed to read calendar'));
     }
 
     return response.json();
@@ -150,7 +151,7 @@ export class CalendarAPI {
     });
 
     if (!response.ok) {
-      throw new Error(await responseErrorMessage(response, 'Failed to write calendar'));
+      throw new RemoteCalendarError(response.status, await responseErrorMessage(response, 'Failed to write calendar'));
     }
 
     return response.json();

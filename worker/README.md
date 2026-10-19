@@ -2,7 +2,7 @@
 
 Cloudflare Worker backend for Calendrier multi-user calendar synchronization.
 
-Release candidate: `1.0.1-rc.2`, paired with frontend `0.1.0-rc.2`.
+Release candidate: `1.0.1-rc.2`, paired with frontend `0.1.0-rc.5`. RC.5's navigation and offline-viewing changes are frontend-only; no Worker redeployment is required.
 
 ## Features
 
@@ -63,7 +63,7 @@ Response:
 
 Delete the current user's session token.
 
-Requires the current session bearer token. The frontend attempts server invalidation before clearing local credentials, and clears local credentials even if the request fails. Existing WebSockets are not explicitly closed by this endpoint; the logging-out frontend closes its own connection.
+Requires the current session bearer token. This revocation endpoint is separate from frontend logout, which clears credentials locally and closes this device's connection without invalidating other devices. Existing WebSockets are not explicitly closed by this endpoint.
 
 Request:
 

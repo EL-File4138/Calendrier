@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `calendrier:${self.registration.scope}:`;
-const CACHE_NAME = `${CACHE_PREFIX}0.1.0-rc.4`;
+const CACHE_NAME = `${CACHE_PREFIX}0.1.0-rc.5`;
 const urlsToCache = [
   './',
   './index.html',
@@ -45,7 +45,13 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        return fetch(event.request).then(
+        return fetch(event.request).catch(async (error) => {
+          if (event.request.mode === 'navigate') {
+            const shell = await caches.open(CACHE_NAME).then(cache => cache.match(new URL('./index.html', self.registration.scope).href));
+            if (shell) return shell;
+          }
+          throw error;
+        }).then(
           (response) => {
             // Check if valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {

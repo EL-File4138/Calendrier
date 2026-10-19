@@ -27,6 +27,7 @@ export const UserPanel = () => {
     userId,
     sessionToken,
     syncMode,
+    isOffline,
     isSyncing,
     lastSyncError,
     dismissSyncError,
@@ -119,11 +120,13 @@ export const UserPanel = () => {
 
   const getStatusColor = () => {
     if (!userId) return 'grey';
+    if (isOffline) return 'grey';
     if (syncMode === 'server') return 'green';
     return 'blue';
   };
 
   const getStatusText = () => {
+    if (isOffline) return t('remoteCalendar.offline');
     if (!userId) return t('userPanel.statusNoUser');
     if (syncMode === 'server') return t('userPanel.statusSynced');
     return t('userPanel.statusRegistered');
@@ -184,7 +187,7 @@ export const UserPanel = () => {
                 <div className="user-panel-meta-row">
                   <span>{t('userPanel.modeLabel')}</span>
                   <Label color={syncMode === 'server' ? 'blue' : 'grey'}>
-                    {syncMode === 'server' ? t('userPanel.modeServer') : t('userPanel.modeLocal')}
+                    {isOffline ? t('remoteCalendar.offline') : syncMode === 'server' ? t('userPanel.modeServer') : t('userPanel.modeLocal')}
                   </Label>
                 </div>
                 <CopyableId id={userId} label={t('userPanel.userIdLabel')} displayLength={0} className="user-panel-copyable" />

@@ -2,7 +2,14 @@
 
 Comprehensive development guide for Calendrier, covering local environment setup, API reference, and implementation details.
 
-Current release candidates: frontend `0.1.0-rc.2` and Worker `1.0.1-rc.2`.
+Current release candidates: frontend `0.1.0-rc.5` and Worker `1.0.1-rc.2`.
+
+## Remote Calendar Navigation And Offline Viewing
+
+- The URL dialog accepts only recognized account/public calendar links for this deployment. Recent history keeps ten successful calendar opens locally; public link tokens are retained for reopening, but private account credentials are not copied into history.
+- `src/utils/remoteCalendar.ts` owns separate private/public snapshot caches, scoped by server and credential identity. Only confirmed reads, WebSocket updates and acknowledged writes are cached; offline views are read-only and separate from editable local data.
+- Transport/server failures may use a saved snapshot; known access rejections evict it. Pending changes prevent automatic reconnect. Explicit reconnect replaces the view with server data, so export unsynced changes first.
+- The service worker caches static assets and provides offline navigation fallback, not API responses. History does not create additional snapshots. Browser drills passed; physical installed-PWA verification remains pending.
 
 ## Development Environment Setup
 
@@ -130,7 +137,7 @@ Save both `userId` and `sessionToken`. The session token is required as `Authori
 
 ### Session Logout
 
-`POST /api/user/logout` takes `{ "userId": "user-uuid" }` and the current `Authorization: Bearer <sessionToken>`. It deletes the stored session hash and returns `{ "success": true }`. The frontend clears credentials and closes its WebSocket after attempting this request, including when the request fails. Failure is reported to the caller; it does not prove server revocation succeeded. The endpoint does not terminate already connected remote WebSockets.
+`POST /api/user/logout` takes `{ "userId": "user-uuid" }` and the current `Authorization: Bearer <sessionToken>`. It deletes the stored session hash and returns `{ "success": true }`. This is a server-side revocation API, not the frontend's logout action. UI logout closes this device's WebSocket and clears its saved credentials without calling the endpoint or invalidating other devices. The endpoint does not terminate already connected remote WebSockets.
 
 ### Public Read-Only Links
 
@@ -651,7 +658,7 @@ yarn --cwd worker install --frozen-lockfile
 yarn test
 ```
 
-The root test command runs two ICS scheduling regression cases, the frontend TypeScript/Vite build, ESLint, Worker typecheck, and Worker bundling. Worker bundling alone does not typecheck. Browser and Worker API/WebSocket drills below are separate manual checks.
+The root test command runs twenty credential-validation, ICS scheduling, occurrence-editing, remote URL/cache/history and service-worker regressions, the frontend TypeScript/Vite build, ESLint, Worker typecheck, and Worker bundling. Worker bundling alone does not typecheck. Browser and Worker API/WebSocket drills below are separate manual checks.
 
 ### Import and Calendar Model
 
@@ -661,7 +668,7 @@ ICS file and URL imports parse timed events and supported recurrence rules. Impo
 
 ### Public Link and Logout Checks
 
-Create a link as owner, open it in another browser session, and verify read-only rendering with the snapshot's settings. Confirm edits appear after refresh, manual purge refreshes the snapshot, and revocation makes the link unavailable. Verify that opening a public link leaves the viewer's private local calendar and account untouched. After logout, HTTP requests with the former session must fail once KV invalidation propagates.
+Create a link as owner, open it in another browser session, and verify read-only rendering with the snapshot's settings. Confirm edits appear after refresh, manual purge refreshes the snapshot, and revocation makes the link unavailable. Verify that opening a public link leaves the viewer's private local calendar and account untouched. UI logout must clear this device's credentials and disconnect without invalidating credentials elsewhere. Separately, calling the revocation API must make subsequent HTTP requests with that session fail once KV invalidation propagates.
 
 ### Create Activation Token
 

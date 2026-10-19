@@ -10,7 +10,7 @@
 
 A modern, interactive web application for creating and managing academic course schedules with a visual weekly calendar interface.
 
-Release candidate: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
+Release candidate: frontend `0.1.0-rc.5`, Worker `1.0.1-rc.2`.
 
 ## Features
 
@@ -18,6 +18,9 @@ Release candidate: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
 - Visual weekly calendar with drag-to-create sessions
 - Multi-session course management (lectures, labs, tutorials)
 - Date-aware weekly, bounded, and one-off sessions with exclusions and occurrence overrides
+- Skip a single occurrence from its detail dialog, or move it once by dragging or using the date/time form without changing the recurring timetable
+- Week and consolidated timetable views
+- Live current-time indicators, a highlighted current day, and automatic mobile centering when opening or returning to Today
 - Academic-year periods, semester week numbers, breaks, exams, and special dates
 - Customizable settings (12/24-hour time, week start day)
 - Dark mode with persistent preference
@@ -36,10 +39,16 @@ Release candidate: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
 - Access control (owner/write/read privileges)
 - Public snapshots refresh every minute; owners can revoke links or purge their snapshot cache
 - Public views use isolated read-only state and do not load the viewer's private account or calendar
+- Transfer account credentials using a JSON file or a locally generated QR code; import from a file or scan with the device camera and confirm before saving
+- Credential backups grant account access: keep files and QR codes private. Logging out clears credentials on this device without invalidating them on other devices
 
 ### Progressive Web App
 - Web app manifest and service worker for browsers that support installation
-- Previously loaded static assets can be used offline; server calendars and public snapshots require a connection
+- Open a remote calendar from **File → Open calendar URL**, or from the public-view header; reopen the last 10 successfully opened calendars from the same dialog
+- Recent links stay on this device and can be removed or cleared. Public links contain access tokens; clear history on shared devices
+- Previously loaded static assets and the last confirmed private/public calendar snapshots can be viewed offline, read-only; reconnect to refresh. Your editable local calendar stays separate
+- Offline copies may be stale. Export unsynced changes before explicitly reconnecting, which reloads the server version. Known authorization failures discard the matching saved snapshot
+- History is navigation, not an offline archive of all ten calendars. Public offline reopening requires its link; installed-PWA/device validation remains pending
 - API responses and public snapshot requests are excluded from service-worker caching
 
 ## Quick Start
@@ -60,7 +69,7 @@ yarn install --frozen-lockfile
 yarn dev
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173/calendrier/` in your browser.
 
 ### Full Stack (Local + Backend)
 
@@ -128,11 +137,12 @@ yarn --cwd worker install --frozen-lockfile
 yarn test
 ```
 
-This runs ICS scheduling regressions, frontend TypeScript/build/lint, and Worker typecheck/bundling. It does not run browser or deployed integration tests.
+This runs credential-validation, ICS scheduling, occurrence-editing, remote URL/cache/history, and service-worker regressions (20 tests), frontend TypeScript/build/lint, and Worker typecheck/bundling. It does not run browser or deployed integration tests. Physical mobile-camera and broader install/offline validation remain pending.
 
 ## Deployment
 
 **Frontend:** Deploy to any static hosting (Vercel, Netlify, Cloudflare Pages, GitHub Pages)
+Set `VITE_WORKER_URL` to your deployed Worker URL before building if online collaboration is needed. The configured base path is `/calendrier/`; align it with your host before building.
 ```bash
 yarn build
 # Deploy dist/ folder

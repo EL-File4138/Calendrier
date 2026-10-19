@@ -1,0 +1,21 @@
+.recent-calendars {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.recent-calendars li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.recent-calendars li > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+.recent-calendars li > :last-child {
+  flex-shrink: 0;
+}

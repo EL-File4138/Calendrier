@@ -32,6 +32,7 @@ import ShareDialog from './ShareDialog';
 import { UserPanel } from './UserPanel';
 import { ToolbarDropdown } from './ToolbarDropdown';
 import './Toolbar.css';
+import OpenCalendarDialog from './OpenCalendarDialog';
 
 interface ToolbarProps {
   onAddCourse: () => void;
@@ -40,7 +41,7 @@ interface ToolbarProps {
   onDisplayModeChange: (mode: 'week' | 'consolidated') => void;
 }
 
-type DialogType = 'new-calendar' | 'import-warning' | 'share' | 'delete-calendar' | null;
+type DialogType = 'new-calendar' | 'import-warning' | 'share' | 'delete-calendar' | 'open-calendar' | null;
 
 const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplayModeChange }: ToolbarProps) => {
   const { t } = useTranslation();
@@ -57,6 +58,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
     createServerCalendar,
     deleteCalendar,
     hasWriteAccess,
+    isOffline,
   } = useCalendar();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImportRef = useRef<string | null>(null);
@@ -326,7 +328,8 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
             ) : (
               <h1><button type="button"
                 className="calendrier-title"
-                onClick={handleTitleClick}
+                onClick={isOffline ? undefined : handleTitleClick}
+                disabled={isOffline}
                 title={t('toolbar.editTitlePlaceholder')}
               >
                 {title}
@@ -341,6 +344,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
                     variant="primary"
                     icon={<PlusIcon />}
                     onClick={onAddCourse}
+                    isDisabled={isOffline}
                     aria-label={t('toolbar.addCourseTitle')}
                   >
                     {t('toolbar.addCourse')}
@@ -349,10 +353,12 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
                     label={t('toolbar.file')}
                     icon={<FolderOpenIcon />}
                     items={[
+                      { label: t('remoteCalendar.open'), icon: <FolderOpenIcon />, onClick: () => setDialog('open-calendar') },
                       {
                         label: t('toolbar.newCalendar'),
                         icon: <FileAltIcon />,
                         onClick: handleNewCalendar,
+                        disabled: isOffline,
                       },
                       {
                         label: t('toolbar.export'),
@@ -363,6 +369,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
                         label: t('toolbar.import'),
                         icon: <FileImportIcon />,
                         onClick: handleImport,
+                        disabled: isOffline,
                       },
                       {
                         label: t('toolbar.saveAsImage'),
@@ -408,6 +415,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
                     variant="plain"
                     icon={<CogIcon />}
                     onClick={onOpenSettings}
+                    isDisabled={isOffline}
                     aria-label={t('toolbar.settingsTitle')}
                   />
                   <Button
@@ -464,6 +472,7 @@ const CalendrierToolbar = ({ onAddCourse, onOpenSettings, displayMode, onDisplay
       {dialog === 'share' && (
         <ShareDialog onClose={() => setDialog(null)} />
       )}
+      {dialog === 'open-calendar' && <OpenCalendarDialog onClose={() => setDialog(null)} />}
 
       {dialog === 'delete-calendar' && (
         <ConfirmDialog

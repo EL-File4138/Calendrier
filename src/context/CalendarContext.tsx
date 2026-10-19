@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import type { Course, CalendarData, Settings, Weekday, SessionSchedule, SessionOverride, AcademicCalendar, AcademicPeriodKind } from '../types/Course';
 import type { WSUpdateMessage, WSPresenceMessage } from '../api/types';
 import { getNextColor } from '../utils/colors';
-import { calendarAPI } from '../api/client';
+import { calendarAPI, WORKER_URL } from '../api/client';
+import { clearRemoteCache, isRemoteUnavailable, readRemoteCache, remoteCacheIdentity, RemoteCalendarError, writeRemoteCache } from '../utils/remoteCalendar';
+import { rememberCalendar } from '../utils/calendarHistory';
 import { DEFAULT_EVENT_TYPE_ICONS } from '../utils/eventIcons';
 
 const STORAGE_KEY = 'academic-calendar-data';
@@ -53,6 +55,7 @@ interface CalendarContextType {
   isLoaded: boolean;
   hasWriteAccess: boolean;
   isSyncing: boolean;
+  isOffline: boolean;
   lastSyncError: string | null;
   dismissSyncError: () => void;
   localError: string | null;
@@ -216,7 +219,7 @@ export const PublicCalendarProvider = ({ children, data, version }: { children: 
     settings: clean.settings ?? defaultSettings,
     darkMode,
     syncMode: 'public', userId: null, sessionToken: null, calendarId: null, isRegistered: false,
-    isLoaded: true, hasWriteAccess: false, isSyncing: false, lastSyncError: null, localError: null, version,
+    isLoaded: true, hasWriteAccess: false, isSyncing: false, isOffline: false, lastSyncError: null, localError: null, version,
     dismissSyncError: () => {}, dismissLocalError: () => {}, activeUsers: [],
     addCourse: unavailable, updateCourse: unavailable, deleteCourse: unavailable, duplicateCourse: unavailable,
     updateTitle: unavailable, updateSettings: unavailable, toggleDarkMode: () => setDarkMode((current) => !current), newCalendar: unavailable, importData: unavailable,
@@ -244,6 +247,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const [hasWriteAccess, setHasWriteAccess] = useState(false);
   const [hasCalendarAccess, setHasCalendarAccess] = useState(false); // Any access (read/write/owner)
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [version, setVersion] = useState(1);
@@ -255,6 +260,35 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const reconnectAttemptsRef = useRef<number>(0);
   const syncStateRef = useRef({ syncMode, calendarId, userId, sessionToken });
   const sessionGenerationRef = useRef(0);
+  const cacheIdentityRef = useRef<string | null>(null);
+
+  const restoreLocalData = useCallback(() => {
+    let data: CalendarData = { courses: [] };
+    try {
+      const saved = safeLocalStorage.getItem(STORAGE_KEY);
+      if (saved) data = sanitizeCalendarData(JSON.parse(saved));
+    } catch (error) { console.error('Failed to restore local calendar:', error); }
+    setCourses(data.courses);
+    setTitle(data.title ?? i18n.t('calendar.defaultTitle'));
+    setSettings({ ...defaultSettings, ...data.settings });
+  }, []);
+
+  const enterOffline = useCallback(() => {
+    sessionGenerationRef.current += 1;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setIsOffline(true);
+    setHasWriteAccess(false);
+    setHasCalendarAccess(false);
+    setActiveUsers([]);
+    setIsSyncing(false);
+  }, []);
 
   // Refs to always access latest state in callbacks
   const latestDataRef = useRef({ title, courses, settings, version });
@@ -281,6 +315,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     const initializeCalendar = async () => {
       const generation = sessionGenerationRef.current;
       try {
+        const savedDarkMode = safeLocalStorage.getItem('dark-mode');
+        setDarkMode(savedDarkMode ? savedDarkMode === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches);
         // Load user ID
         const savedUserId = safeLocalStorage.getItem(USER_ID_KEY);
         if (savedUserId) {
@@ -303,43 +339,54 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
           // Load calendar from server
           try {
+            const identity = await remoteCacheIdentity([WORKER_URL, savedCalendarId, savedUserId, savedSessionToken]);
+            if (generation !== sessionGenerationRef.current) return;
+            cacheIdentityRef.current = identity;
+            const cached = readRemoteCache('private', identity);
+            if (!navigator.onLine && cached) {
+              const data = sanitizeCalendarData(cached.data);
+              setCourses(data.courses);
+              setTitle(data.title ?? i18n.t('calendar.defaultTitle'));
+              setSettings({ ...defaultSettings, ...data.settings });
+              setVersion(cached.version);
+              enterOffline();
+              return;
+            }
             const response = await calendarAPI.readCalendar(savedCalendarId, savedUserId, savedSessionToken);
             if (generation !== sessionGenerationRef.current) return;
+            if (!navigator.onLine) throw new TypeError('Offline');
             setCourses(response.data.courses);
             if (response.data.title) setTitle(response.data.title);
             if (response.data.settings) setSettings({ ...defaultSettings, ...response.data.settings });
             setVersion(response.version);
             setHasWriteAccess(response.hasWriteAccess);
             setHasCalendarAccess(true);
+            writeRemoteCache('private', identity, response);
+            rememberCalendar(`${window.location.origin}${window.location.pathname}?calendar=${savedCalendarId}`, window.location.href, response.data.title);
           } catch (error) {
             if (generation !== sessionGenerationRef.current) return;
             console.error('Failed to load saved calendar:', error);
-            setSyncMode('local');
-            safeLocalStorage.removeItem(CALENDAR_ID_KEY);
+            const cached = cacheIdentityRef.current ? readRemoteCache('private', cacheIdentityRef.current) : null;
+            if (isRemoteUnavailable(error) && cached) {
+              const data = sanitizeCalendarData(cached.data);
+              setCourses(data.courses);
+              setTitle(data.title ?? i18n.t('calendar.defaultTitle'));
+              setSettings({ ...defaultSettings, ...data.settings });
+              setVersion(cached.version);
+              enterOffline();
+            } else {
+              if (!isRemoteUnavailable(error)) clearRemoteCache('private');
+              setSyncMode('local');
+              safeLocalStorage.removeItem(CALENDAR_ID_KEY);
+              restoreLocalData();
+              setLastSyncError(i18n.t('remoteCalendar.noCache'));
+            }
           }
         } else {
           // Load local data if no server calendar
-          const saved = safeLocalStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            const data = sanitizeCalendarData(JSON.parse(saved));
-            setCourses(data.courses);
-            if (data.title) {
-              setTitle(data.title);
-            }
-            if (data.settings) {
-              setSettings({ ...defaultSettings, ...data.settings });
-            }
-          }
+          restoreLocalData();
         }
 
-        // Load dark mode preference
-        const savedDarkMode = safeLocalStorage.getItem('dark-mode');
-        if (savedDarkMode) {
-          setDarkMode(savedDarkMode === 'true');
-        } else {
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          setDarkMode(prefersDark);
-        }
       } catch (error) {
         console.error('Failed to load data from localStorage:', error);
       } finally {
@@ -348,7 +395,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeCalendar();
-  }, []);
+  }, [enterOffline, restoreLocalData]);
 
   // Save to localStorage whenever data changes (local mode only)
   useEffect(() => {
@@ -449,6 +496,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
           if (updateMsg.data.title) setTitle(updateMsg.data.title);
           if (updateMsg.data.settings) setSettings(updateMsg.data.settings);
           setVersion(updateMsg.version);
+          if (cacheIdentityRef.current) writeRemoteCache('private', cacheIdentityRef.current, {
+            data: updateMsg.data, version: updateMsg.version, updatedAt: Date.now(), hasWriteAccess: false,
+          });
         } else if (message.type === 'presence') {
           const presenceMsg = message as WSPresenceMessage;
           if (presenceMsg.action === 'join') {
@@ -514,13 +564,18 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       // Use ref to get the latest data
-      const { title: currentTitle, courses: currentCourses, settings: currentSettings, version: currentVersion } = latestDataRef.current;
+      const current = latestDataRef.current;
+      const { title: currentTitle, courses: currentCourses, settings: currentSettings, version: currentVersion } = current;
       const data: CalendarData = { title: currentTitle, courses: currentCourses, settings: currentSettings };
       const response = await calendarAPI.writeCalendar(calendarId, userId, sessionToken, data, currentVersion);
       if (generation !== sessionGenerationRef.current || syncStateRef.current.syncMode !== 'server' || syncStateRef.current.calendarId !== calendarId) return;
 
       if (response.success) {
         setVersion(response.version);
+        if (cacheIdentityRef.current) writeRemoteCache('private', cacheIdentityRef.current, {
+          data, version: response.version, updatedAt: Date.now(), hasWriteAccess: false,
+        });
+        if (latestDataRef.current === current) setHasPendingChanges(false);
       } else {
         setLastSyncError(i18n.t('errors.syncConflict'));
         // Version conflict - the WebSocket will receive the latest version
@@ -530,12 +585,22 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       if (generation !== sessionGenerationRef.current || syncStateRef.current.syncMode !== 'server' || syncStateRef.current.calendarId !== calendarId) return;
       const errorMessage = error instanceof Error ? error.message : String(error);
       setLastSyncError(errorMessage);
+      if (isRemoteUnavailable(error)) enterOffline();
+      else if (error instanceof RemoteCalendarError && [401, 403, 404, 410].includes(error.status)) {
+        clearRemoteCache('private');
+        workOffline();
+        restoreLocalData();
+        setLastSyncError(errorMessage);
+      }
     } finally {
       if (generation === sessionGenerationRef.current) setIsSyncing(false);
     }
-  }, [syncMode, calendarId, userId, sessionToken, hasWriteAccess]);
+    // workOffline is stable; it is declared below the calendar mutation functions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncMode, calendarId, userId, sessionToken, hasWriteAccess, enterOffline, restoreLocalData]);
 
   const debouncedSync = useCallback(() => {
+    setHasPendingChanges(true);
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
@@ -722,6 +787,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       setVersion(1);
       setLastSyncError(null);
       safeLocalStorage.setItem(CALENDAR_ID_KEY, response.calendarId);
+      cacheIdentityRef.current = await remoteCacheIdentity([WORKER_URL, response.calendarId, userId, sessionToken]);
+      if (generation !== sessionGenerationRef.current) return response.calendarId;
+      writeRemoteCache('private', cacheIdentityRef.current, { data, version: 1, updatedAt: Date.now(), hasWriteAccess: false });
 
       // Update URL to include calendar ID
       const url = new URL(window.location.href);
@@ -750,6 +818,8 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       if (generation !== sessionGenerationRef.current) return;
+      const identity = userId && sessionToken ? await remoteCacheIdentity([WORKER_URL, calId, userId, sessionToken]) : null;
+      if (generation !== sessionGenerationRef.current) return;
       const response = await calendarAPI.readCalendar(calId, userId || undefined, sessionToken || undefined);
       if (generation !== sessionGenerationRef.current) return;
       setCourses(response.data.courses);
@@ -760,6 +830,12 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       setHasCalendarAccess(true); // Successfully loaded = has access
       setCalendarId(calId);
       setSyncMode('server');
+      setIsOffline(false);
+      setHasPendingChanges(false);
+      setLastSyncError(null);
+      cacheIdentityRef.current = identity;
+      if (identity) writeRemoteCache('private', identity, response);
+      rememberCalendar(`${window.location.origin}${window.location.pathname}?calendar=${calId}`, window.location.href, response.data.title);
       safeLocalStorage.setItem(CALENDAR_ID_KEY, calId);
 
       // Update URL to include calendar ID
@@ -768,6 +844,34 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       window.history.pushState({}, '', url.toString());
     } catch (error: unknown) {
       console.error('Failed to load server calendar:', error);
+      if (generation !== sessionGenerationRef.current) return;
+      if (isRemoteUnavailable(error) && userId && sessionToken) {
+        const identity = await remoteCacheIdentity([WORKER_URL, calId, userId, sessionToken]);
+        if (generation !== sessionGenerationRef.current) return;
+        const cached = readRemoteCache('private', identity);
+        if (cached) {
+          const data = sanitizeCalendarData(cached.data);
+          cacheIdentityRef.current = identity;
+          setCourses(data.courses);
+          setTitle(data.title ?? i18n.t('calendar.defaultTitle'));
+          setSettings({ ...defaultSettings, ...data.settings });
+          setVersion(cached.version);
+          setCalendarId(calId);
+          setSyncMode('server');
+          safeLocalStorage.setItem(CALENDAR_ID_KEY, calId);
+          enterOffline();
+          return;
+        }
+      }
+      if (!isRemoteUnavailable(error) && userId && sessionToken) {
+        const identity = await remoteCacheIdentity([WORKER_URL, calId, userId, sessionToken]);
+        if (generation !== sessionGenerationRef.current) return;
+        if (readRemoteCache('private', identity)) clearRemoteCache('private');
+      }
+      if (!isRemoteUnavailable(error) && calId === calendarId) {
+        workOffline();
+        restoreLocalData();
+      }
       throw error;
     }
   };
@@ -823,6 +927,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await calendarAPI.deleteCalendar(calendarId, userId, sessionToken);
+      clearRemoteCache('private');
 
       // Reset to local mode after deletion
       setCourses([]);
@@ -860,6 +965,9 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       wsRef.current = null;
     }
     setSyncMode('local');
+    setIsOffline(false);
+    setHasPendingChanges(false);
+    cacheIdentityRef.current = null;
     setCalendarId(null);
     setHasWriteAccess(false);
     setHasCalendarAccess(false);
@@ -893,6 +1001,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   }, [workOffline]);
 
   const logout = async () => {
+    clearRemoteCache('private');
     workOffline();
     setUserId(null);
     setSessionToken(null);
@@ -908,6 +1017,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
       throw new Error(i18n.t('userPanel.credentialsLocalOnly'));
     }
     sessionGenerationRef.current += 1;
+    clearRemoteCache('private');
     syncStateRef.current = { ...syncStateRef.current, userId: nextUserId, sessionToken: nextSessionToken };
     setUserId(nextUserId);
     setSessionToken(nextSessionToken);
@@ -916,6 +1026,21 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
     safeLocalStorage.setItem(SESSION_TOKEN_KEY, nextSessionToken);
     safeLocalStorage.setItem(USER_REGISTERED_KEY, 'true');
   };
+
+  useEffect(() => {
+    const offline = () => { if (isLoaded && syncStateRef.current.syncMode === 'server') enterOffline(); };
+    const online = () => {
+      if (isOffline && calendarId && !hasPendingChanges) void loadServerCalendar(calendarId).catch(() => setLastSyncError(i18n.t('errors.connectionLost')));
+    };
+    window.addEventListener('offline', offline);
+    window.addEventListener('online', online);
+    return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
+    // Keep the reconnect action bound to the current account and snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isOffline, hasPendingChanges, calendarId, userId, sessionToken, enterOffline]);
+
+  const writable = <A extends unknown[], R,>(action: (...args: A) => Promise<R>) => (...args: A): Promise<R> =>
+    isOffline ? Promise.reject(new Error(i18n.t('remoteCalendar.offline'))) : action(...args);
 
   return (
     <CalendarContext.Provider
@@ -932,30 +1057,31 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
         isLoaded,
         hasWriteAccess,
         isSyncing,
+        isOffline,
         lastSyncError,
         dismissSyncError: () => setLastSyncError(null),
         localError,
         dismissLocalError: () => setLocalError(null),
         version,
-        addCourse,
-        updateCourse,
-        deleteCourse,
-        duplicateCourse,
-        updateTitle,
-        updateSettings,
+        addCourse: writable(addCourse),
+        updateCourse: writable(updateCourse),
+        deleteCourse: writable(deleteCourse),
+        duplicateCourse: writable(duplicateCourse),
+        updateTitle: writable(updateTitle),
+        updateSettings: writable(updateSettings),
         toggleDarkMode,
-        newCalendar,
+        newCalendar: writable(newCalendar),
         exportData,
-        importData,
-        createServerCalendar,
+        importData: writable(importData),
+        createServerCalendar: writable(createServerCalendar),
         registerUserSession,
         workOffline,
         logout,
         loadServerCalendar,
         syncToServer,
-        deleteCalendar,
-        grantAccess,
-        revokeAccess,
+        deleteCalendar: writable(deleteCalendar),
+        grantAccess: writable(grantAccess),
+        revokeAccess: writable(revokeAccess),
         listPrivileges,
         activeUsers,
       }}

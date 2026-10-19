@@ -1,4 +1,22 @@
 {
+  "remoteCalendar": {
+    "history": "最近打开的日历",
+    "historyPrivacy": "最近 10 个日历保存在此设备上。保存的公开链接包含访问令牌。请在共享设备上清除历史记录。账户日历仍需访问权限。历史记录不会保存额外的离线副本。",
+    "historyEmpty": "暂无最近打开的日历。",
+    "publicCalendar": "公开日历",
+    "privateCalendar": "账户日历",
+    "remove": "移除",
+    "removeHistory": "从历史记录中移除{{title}}",
+    "clearHistory": "清除历史记录",
+    "open": "打开日历链接",
+    "url": "日历 URL",
+    "urlHelp": "粘贴此 Calendrier 站点的公开日历或账户日历链接。账户日历需要本设备已保存的凭据。",
+    "invalidUrl": "请输入此 Calendrier 站点的有效日历链接。",
+    "offline": "离线模式 — 已保存的日历",
+    "cached": "当前显示已保存的日历，内容可能已过期，暂时无法编辑。重新连接将加载服务器版本，请先导出尚未同步的更改。",
+    "retry": "重新连接",
+    "noCache": "无法打开远程日历，已恢复本地日历。请先联网加载一次，以保存可离线查看的远程副本。"
+  },
   "toolbar": {
     "actions": "操作",
     "addCourse": "添加",

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bullseye, Spinner } from '@patternfly/react-core';
+import { Alert, Button, Bullseye, Spinner } from '@patternfly/react-core';
 import { CalendarProvider } from './context/CalendarContext';
 import WeekCalendar from './components/WeekCalendar';
 import CourseForm from './components/CourseForm';
@@ -15,7 +15,8 @@ import PublicCalendarView from './components/PublicCalendarView';
 
 function AppContent() {
   const { t } = useTranslation();
-  const { isLoaded, localError, dismissLocalError } = useCalendar();
+  const { isLoaded, localError, dismissLocalError, isOffline, calendarId, loadServerCalendar } = useCalendar();
+  const [retryError, setRetryError] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [displayMode, setDisplayMode] = useState<'week' | 'consolidated'>('week');
@@ -63,9 +64,15 @@ function AppContent() {
     <div className="calendrier-app">
       <Toolbar onAddCourse={handleAddCourse} onOpenSettings={() => setShowSettings(true)} displayMode={displayMode} onDisplayModeChange={setDisplayMode} />
       <main className="calendrier-main">
+        {isOffline && <Alert isInline variant="warning" title={t('remoteCalendar.offline')}>
+          <p>{t('remoteCalendar.cached')}</p>
+          <Button variant="link" onClick={() => { setRetryError(false); if (calendarId) void loadServerCalendar(calendarId).catch(() => setRetryError(true)); }}>{t('remoteCalendar.retry')}</Button>
+          {retryError && <p role="alert">{t('errors.connectionLost')}</p>}
+        </Alert>}
         {localError && <InlineAlert onClose={dismissLocalError} title={t(localError)} variant="danger" />}
         <URLHandler />
         <WeekCalendar
+          readOnly={isOffline}
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
           onEditCourse={handleEditCourse}

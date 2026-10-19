@@ -1,4 +1,22 @@
 {
+  "remoteCalendar": {
+    "history": "Ostatnio otwierane kalendarze",
+    "historyPrivacy": "Na tym urządzeniu zapisywanych jest 10 ostatnich kalendarzy. Zapisane linki publiczne zawierają tokeny dostępu. Na współdzielonych urządzeniach wyczyść historię. Kalendarze konta nadal wymagają uprawnień. Historia nie zapisuje dodatkowych kopii offline.",
+    "historyEmpty": "Brak ostatnio otwieranych kalendarzy.",
+    "publicCalendar": "Kalendarz publiczny",
+    "privateCalendar": "Kalendarz konta",
+    "remove": "Usuń",
+    "removeHistory": "Usuń {{title}} z historii",
+    "clearHistory": "Wyczyść historię",
+    "open": "Otwórz adres kalendarza",
+    "url": "Adres URL kalendarza",
+    "urlHelp": "Wklej publiczny lub przypisany do konta link z tej instalacji Calendrier. Kalendarze konta wymagają zapisanych danych logowania.",
+    "invalidUrl": "Podaj prawidłowy link do kalendarza z tej instalacji Calendrier.",
+    "offline": "Tryb offline — zapisany kalendarz",
+    "cached": "Wyświetlany jest zapisany kalendarz, który może być nieaktualny. Edycja jest wyłączona. Przed ponownym połączeniem wyeksportuj niezsynchronizowane zmiany: połączenie wczyta wersję z serwera.",
+    "retry": "Połącz ponownie",
+    "noCache": "Nie udało się otworzyć zdalnego kalendarza. Przywrócono lokalny kalendarz. Połącz się raz, aby zapisać zdalną kopię do przeglądania offline."
+  },
   "toolbar": {
     "actions": "Działania",
     "addCourse": "Dodaj",

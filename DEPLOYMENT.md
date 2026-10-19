@@ -2,7 +2,7 @@
 
 This document provides procedures for deploying Calendrier to production.
 
-Release candidates: frontend `0.1.0-rc.2`, Worker `1.0.1-rc.2`.
+Release candidates: frontend `0.1.0-rc.5`, Worker `1.0.1-rc.2`.
 
 ## Prerequisites
 
@@ -156,7 +156,7 @@ yarn install --frozen-lockfile
 yarn build
 ```
 
-The build output is `dist/`. Set `VITE_WORKER_URL` to the deployed Worker URL at build time. The service worker caches static shell assets under a release-specific cache name and excludes `/api/` requests; public snapshot refreshes therefore require network access.
+The build output is `dist/`. Set `VITE_WORKER_URL` to the deployed Worker URL at build time. The service worker caches static shell assets under a release-specific cache name and excludes `/api/` requests. Application-managed confirmed snapshots support read-only offline viewing; refreshing them requires network access. RC.5 requires no Worker update from `1.0.1-rc.2`.
 
 ### 3. Deploy to Hosting Platform
 
@@ -211,7 +211,7 @@ curl -i https://calendrier-worker.elfile4138.workers.dev/api/public/read \
   -d '{}'
 ```
 
-The deployed router currently returns `404` for `/api/public/read` without a valid link body; management input validation returns `400` with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Use the public-link flow in the frontend for an authenticated end-to-end check.
+An absent or malformed public-link body returns `400`; a well-formed but unmapped link returns `404`. Public responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Use the public-link flow in the frontend for an end-to-end check of link authorization.
 
 Test token creation works:
 
